@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { logout } from "@/lib/auth";
 import {
-  IconKonfigurasaun,
   IconPainel,
   IconPrezensa,
   IconProfesor,
@@ -16,12 +15,13 @@ import { useToast } from "@/components/ui/Toast";
 import { cx } from "@/lib/cx";
 import { ADMIN } from "@/lib/mock-data";
 
+// Konfigurasaun is deliberately absent: it lives in the admin chip menu at the
+// foot of the sidebar, next to logout, rather than beside the daily screens.
 const NAV = [
   { href: "/", label: "Painel", Icon: IconPainel },
   { href: "/profesor", label: "Profesór sira", Icon: IconProfesor },
   { href: "/prezensa", label: "Prezensa", Icon: IconPrezensa },
   { href: "/relatoriu", label: "Relatóriu", Icon: IconRelatoriu },
-  { href: "/konfig", label: "Konfigurasaun", Icon: IconKonfigurasaun },
 ] as const;
 
 const inisiais = (naran: string) =>
