@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="tet" data-mode="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ETI PRESENSA · Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --accent:#0D9488;
+  --bg:#F6F5F2; --surface:#FFFFFF; --text:#1D1A17; --muted:#7A736B;
+  --border:#E8E4DF; --soft:color-mix(in srgb, var(--accent) 10%, transparent);
+  --ok:#16A34A; --warn:#D97706; --bad:#DC2626; --info:#2563EB; --viol:#7C3AED;
+  --r:10px;
+}
+html[data-mode="dark"]{
+  --bg:#14120F; --surface:#1D1A17; --text:#F3F1EE; --muted:#9A928A; --border:#2C2823;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.45}
+h1,h2,h3,.brand{font-family:Archivo,Inter,sans-serif}
+.mono{font-family:'IBM Plex Mono',monospace}
+button{font:inherit;cursor:pointer;color:inherit;background:none;border:none}
+input,select,textarea{font:inherit;color:var(--text);background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:7px 10px;outline:none;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--soft)}
+::placeholder{color:var(--muted)}
+
+.app{display:flex;min-height:100vh}
+.sidebar{width:218px;flex-shrink:0;border-right:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.brand b{font-size:15px;letter-spacing:.02em;display:block}
+.brand span{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;margin-top:3px}
+.brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);display:inline-block}
+nav{padding:10px 8px;display:flex;flex-direction:column;gap:2px;flex:1}
+nav button{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;color:var(--muted);font-weight:500;text-align:left;width:100%}
+nav button svg{width:16px;height:16px;flex-shrink:0}
+nav button:hover{background:var(--bg);color:var(--text)}
+nav button.active{background:var(--soft);color:var(--accent);font-weight:600}
+.sidefoot{padding:12px;border-top:1px solid var(--border)}
+.userchip{display:flex;align-items:center;gap:9px}
+.avatar{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;font-family:Archivo}
+.userchip small{display:block;color:var(--muted);font-size:11px}
+.userchip b{font-size:12.5px}
+
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;padding:20px 26px 14px;gap:12px}
+.topbar h1{font-size:19px;font-weight:700}
+.topbar p{color:var(--muted);font-size:12.5px;margin-top:2px}
+.today{font-size:12.5px;color:var(--muted);text-align:right}
+.today b{color:var(--text);display:block;font-family:'IBM Plex Mono',monospace;font-size:12px}
+main{padding:6px 26px 40px}
+.view{display:none;animation:fade .18s ease}
+.view.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px}
+.card .k{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.card .v{font-family:Archivo;font-size:26px;font-weight:700;margin-top:4px}
+.card .v small{font-size:13px;color:var(--muted);font-weight:500}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.panel h3{font-size:13px;padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.grid2{display:grid;grid-template-columns:1fr 1.4fr;gap:14px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:9px 14px;border-bottom:1px solid var(--border);white-space:nowrap;font-weight:600}
+th small{display:block;font-family:'IBM Plex Mono',monospace;letter-spacing:0;text-transform:none;color:var(--muted);opacity:.75;font-size:10px;margin-top:1px}
+td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr.click{cursor:pointer}
+tbody tr.click:hover{background:var(--soft)}
+.name b{display:block;font-weight:600}
+.name small{color:var(--muted);font-size:11.5px}
+.chip{font-family:'IBM Plex Mono',monospace;font-size:12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:2px 7px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.chip.late{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 40%,transparent);background:color-mix(in srgb,var(--warn) 9%,transparent)}
+.chip.late::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--warn)}
+.mut{color:var(--muted)}
+.badge{font-size:11px;font-weight:600;border-radius:99px;padding:3px 9px;display:inline-block}
+.b-PREZENTE{color:var(--ok);background:color-mix(in srgb,var(--ok) 11%,transparent)}
+.b-FALTA{color:var(--bad);background:color-mix(in srgb,var(--bad) 11%,transparent)}
+.b-LISENSA{color:var(--info);background:color-mix(in srgb,var(--info) 11%,transparent)}
+.b-MISAUN{color:var(--viol);background:color-mix(in srgb,var(--viol) 11%,transparent)}
+.b-FERIADU{color:var(--muted);background:var(--bg)}
+
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px}
+.toolbar .grow{flex:1}
+.toolbar select,.toolbar input{width:auto}
+.seg{display:inline-flex;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:2px;gap:2px}
+.seg button{padding:5px 11px;border-radius:6px;font-size:12.5px;font-weight:500;color:var(--muted)}
+.seg button.active{background:var(--soft);color:var(--accent);font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:7px;background:var(--accent);color:#fff;font-weight:600;font-size:13px;border-radius:8px;padding:8px 14px}
+.btn:hover{filter:brightness(1.06)}
+.btn.ghost{background:var(--surface);color:var(--text);border:1px solid var(--border)}
+.btn.ghost:hover{border-color:var(--accent);color:var(--accent);filter:none}
+.btn svg{width:14px;height:14px}
+.search{position:relative}
+.search input{padding-left:30px;width:230px}
+.search svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);width:14px;height:14px;color:var(--muted)}
+
+.ovl{position:fixed;inset:0;background:rgba(20,15,10,.45);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+.ovl.on{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:520px;max-height:88vh;overflow:auto;animation:pop .16s ease}
+@keyframes pop{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
+.modal header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.modal header h3{font-size:15px}
+.modal header small{display:block;color:var(--muted);font-weight:400;font-size:12px;margin-top:2px}
+.modal .body{padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.modal footer{padding:13px 18px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.field label{display:block;font-size:12px;font-weight:600;margin-bottom:5px;color:var(--muted)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.hint{font-size:12px;color:var(--muted);background:var(--bg);border:1px dashed var(--border);border-radius:8px;padding:9px 11px}
+.x{color:var(--muted);padding:4px;border-radius:6px}
+.x:hover{background:var(--bg);color:var(--text)}
+
+.punches{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.punch{border:1px solid var(--border);border-radius:10px;padding:10px 12px;background:var(--bg)}
+.punch .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;display:flex;justify-content:space-between}
+.punch .t{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;margin:5px 0 7px}
+.punch .t.late{color:var(--warn)}
+.punch .ev{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--muted)}
+.punch .ev svg{width:13px;height:13px}
+.punch .ev .geo.ok{color:var(--ok)}.punch .ev .geo.no{color:var(--warn)}
+.photo{width:26px;height:26px;border-radius:6px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted)}
+
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.sw{width:40px;height:40px;border-radius:10px;border:2px solid transparent;position:relative}
+.sw.active{border-color:var(--text)}
+.sw.active::after{content:"✓";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700}
+.kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.kv:last-child{border-bottom:none}
+.kv span{color:var(--muted)}
+
+#toast{position:fixed;bottom:22px;right:22px;background:var(--surface);border:1px solid var(--accent);border-left:4px solid var(--accent);border-radius:10px;padding:11px 16px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.12);display:none;z-index:60}
+#toast.on{display:block;animation:pop .16s ease}
+.empty{padding:26px;text-align:center;color:var(--muted);font-size:13px}
+.hide{display:none}
+</style>
+</head>
+<body>
+<div class="app">
+
+<aside class="sidebar">
+  <div class="brand"><b>ETI PRESENSA</b><span><i class="dot"></i>Painel Administrasaun</span></div>
+  <nav id="nav">
+    <button data-v="painel" class="active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Painel</button>
+    <button data-v="profesor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>Profesór sira</button>
+    <button data-v="prezensa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18M9 15l2 2 4-4"/></svg>Prezensa</button>
+    <button data-v="relatoriu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M9 17v-4M13 17v-7M17 17v-2"/></svg>Relatóriu</button>
+    <button data-v="konfig"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Konfigurasaun</button>
+  </nav>
+  <div class="sidefoot">
+    <div class="userchip"><div class="avatar">JM</div><div><b>Julião Martins</b><small>ADMIN · ETI-Dili</small></div></div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div><h1 id="pageTitle">Painel</h1><p id="pageSub"></p></div>
+    <div class="today">Ohin loron<b>Tersa · 04 Agostu 2026</b></div>
+  </header>
+  <main>
+
+  <!-- PAINEL -->
+  <section class="view on" id="v-painel">
+    <div class="cards" id="painelCards"></div>
+    <div class="grid2">
+      <div class="panel"><h3>Seidauk marka ohin</h3><div id="seidaukList"></div></div>
+      <div class="panel"><h3>Marka foun ohin loron</h3><div id="feedList"></div></div>
+    </div>
+  </section>
+
+  <!-- PROFESOR -->
+  <section class="view" id="v-profesor">
+    <div class="toolbar">
+      <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg><input id="profSearch" placeholder="Buka naran, email, kargu…"></div>
+      <div class="grow"></div>
+      <button class="btn" id="btnAddProf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>Aumenta Profesór</button>
+    </div>
+    <div class="panel"><table>
+      <thead><tr><th>Profesór</th><th>Nu. ID</th><th>Kargu</th><th>Kontaktu</th><th>Estadu konta</th></tr></thead>
+      <tbody id="profRows"></tbody>
+    </table></div>
+  </section>
+
+  <!-- PREZENSA -->
+  <section class="view" id="v-prezensa">
+    <div class="toolbar">
+      <select id="pWho"></select>
+      <div class="seg" id="pPer">
+        <button data-p="loron" class="active">Loron</button><button data-p="semana">Semana</button><button data-p="fulan">Fulan</button>
+      </div>
+      <input type="date" id="pLoron" value="2026-08-03">
+      <select id="pFulan" class="hide"></select>
+      <select id="pSemana" class="hide"><option value="1">Semana 1</option><option value="2">Semana 2</option><option value="3">Semana 3</option><option value="4">Semana 4</option><option value="5">Semana 5</option></select>
+      <div class="grow"></div>
+      <button class="btn ghost" id="btnLisensa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18M12 13v4M10 15h4"/></svg>Rejistu Lisensa</button>
+    </div>
+    <div class="panel"><table>
+      <thead><tr>
+        <th>Data</th><th id="thProf">Profesór</th>
+        <th>Dader Tama<small>08:00</small></th><th>Dader Fila<small>12:00</small></th>
+        <th>Lorokraik Tama<small>13:30</small></th><th>Lorokraik Fila<small>17:30</small></th>
+        <th>Estadu</th>
+      </tr></thead>
+      <tbody id="prezRows"></tbody>
+    </table></div>
+  </section>
+
+  <!-- RELATORIU -->
+  <section class="view" id="v-relatoriu">
+    <div class="toolbar">
+      <select id="rWho"></select>
+      <div class="seg" id="rPer">
+        <button data-p="semana">Semana</button><button data-p="fulan" class="active">Fulan</button>
+      </div>
+      <select id="rFulan"></select>
+      <select id="rSemana" class="hide"><option value="1">Semana 1</option><option value="2">Semana 2</option><option value="3">Semana 3</option><option value="4">Semana 4</option><option value="5">Semana 5</option></select>
+      <div class="grow"></div>
+      <button class="btn" id="btnCsv"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>Download CSV</button>
+    </div>
+    <div class="cards" id="repCards"></div>
+    <div class="panel"><table>
+      <thead><tr><th>Profesór</th><th>Loron servisu</th><th>Prezente</th><th>Atrazadu</th><th>Falta</th><th>Lisensa</th><th>Misaun</th><th>%</th></tr></thead>
+      <tbody id="repRows"></tbody>
+    </table></div>
+  </section>
+
+  <!-- KONFIG -->
+  <section class="view" id="v-konfig">
+    <div class="grid2">
+      <div class="panel"><h3>Aparénsia</h3><div class="body" style="padding:16px;display:flex;flex-direction:column;gap:16px">
+        <div class="field"><label>Kór prinsipál</label><div class="swatches" id="swatches"></div></div>
+        <div class="field"><label>Modu</label>
+          <div class="seg" id="modeSeg"><button data-m="light" class="active">☀ Naroman</button><button data-m="dark">☾ Nakukun</button></div>
+        </div>
+        <button class="btn" style="align-self:flex-start" id="btnSaveCfg">Rai konfigurasaun</button>
+      </div></div>
+      <div class="panel"><h3>Informasaun sistema <span class="mut" style="font-weight:400;font-size:11px">husi servidor (.env)</span></h3>
+        <div style="padding:6px 16px 12px">
+          <div class="kv"><span>Oras dadér</span><b class="mono">08:00 — 12:00</b></div>
+          <div class="kv"><span>Oras lorokraik</span><b class="mono">13:30 — 17:30</b></div>
+          <div class="kv"><span>Limite sesaun</span><b class="mono">13:00</b></div>
+          <div class="kv"><span>Sábadu lorokraik</span><b>La iha sesaun</b></div>
+          <div class="kv"><span>Geofence (raiu eskola)</span><b class="mono">100 m</b></div>
+          <div class="kv"><span>Obriga fatin</span><b>Ativu</b></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  </main>
+</div>
+</div>
+
+<div class="ovl" id="ovl"><div class="modal" id="modalBox"></div></div>
+<div id="toast"></div>
+
+<script>
+/* ============ Dadus mock — bazeia ba modelu iha plan.md ============ */
+const FULAN=['','Janeiru','Fevereiru','Marsu','Abríl','Maiu','Juñu','Jullu','Agostu','Setembru','Outubru','Novembru','Dezembru'];
+const LORON=['Domingu','Segunda','Tersa','Kuarta','Kinta','Sesta','Sábadu'];
+const TODAY='2026-08-04';
+let T=[
+ {id:1,numeru:1021,naran:'Maria Fátima Soares',kargu:'Profesóra Informátika',email:'maria.soares@eti.tl',tel:'+670 7723 1104',sexu:'FETO'},
+ {id:2,numeru:1007,naran:'João Baptista da Costa',kargu:'Profesór Redes',email:'joao.dacosta@eti.tl',tel:'+670 7745 8820',sexu:'MANE'},
+ {id:3,numeru:1015,naran:'Ana Paula Ximenes',kargu:'Profesóra Matemátika',email:'ana.ximenes@eti.tl',tel:'+670 7810 3345',sexu:'FETO'},
+ {id:4,numeru:1032,naran:'Carlos Alberto Belo',kargu:'Profesór Eletrónika',email:'carlos.belo@eti.tl',tel:'+670 7733 9012',sexu:'MANE'},
+ {id:5,numeru:1044,naran:'Filomena Gusmão',kargu:'Profesóra Portugés',email:'filomena.gusmao@eti.tl',tel:'+670 7756 2211',sexu:'FETO'},
+ {id:6,numeru:1050,naran:'Domingos Sarmento',kargu:'Profesór Programasaun',email:'domingos.sarmento@eti.tl',tel:'+670 7791 6604',sexu:'MANE'},
+ {id:7,numeru:1058,naran:'Rosa Maria Pereira',kargu:'Profesóra Inglés',email:'rosa.pereira@eti.tl',tel:'+670 7768 4433',sexu:'FETO'},
+ {id:8,numeru:1063,naran:'Abílio dos Santos',kargu:'Profesór Físika',email:'abilio.santos@eti.tl',tel:'+670 7702 5578',sexu:'MANE'},
+];
+let seed=42;const rnd=()=>{seed=(seed*9301+49297)%233280;return seed/233280};
+const pad=n=>String(n).padStart(2,'0');
+const fmt=m=>pad(Math.floor(m/60))+':'+pad(m%60);
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const semanaOf=d=>{const f=new Date(d.getFullYear(),d.getMonth(),1);return Math.floor((d.getDate()-1+(f.getDay()+6)%7)/7)+1};
+const REC={}; // key tid|iso
+const LEAVES={3:{from:'2026-07-13',to:'2026-07-15',estadu:'LISENSA',obs:'Moras — atestadu médiku'},
+              6:{from:'2026-07-20',to:'2026-07-22',estadu:'MISAUN',obs:'Formasaun iha INFORDEPE'}};
+const FALTAS={'2|2026-07-08':1,'8|2026-07-24':1};
+function mkDay(t,d){
+  const k=t.id+'|'+iso(d);
+  const lv=LEAVES[t.id];
+  if(lv&&iso(d)>=lv.from&&iso(d)<=lv.to){REC[k]={tid:t.id,d:new Date(d),estadu:lv.estadu,obs:lv.obs,dt:null,df:null,lt:null,lf:null};return}
+  if(FALTAS[k]){REC[k]={tid:t.id,d:new Date(d),estadu:'FALTA',obs:'',dt:null,df:null,lt:null,lf:null};return}
+  const sat=d.getDay()===6, today=iso(d)===TODAY;
+  const P=(m,s,dist)=>({t:fmt(m),late:s?m>s:false,dist:dist??Math.round(4+rnd()*60),ok:true});
+  const dtm=466+Math.floor(rnd()*22);
+  const r={tid:t.id,d:new Date(d),estadu:'PREZENTE',obs:'',
+    dt:P(dtm,480), df:today?null:P(720+Math.floor(rnd()*12),0),
+    lt:(sat||today)?null:P(802+Math.floor(rnd()*16),810),
+    lf:(sat||today)?null:P(1050+Math.floor(rnd()*14),0)};
+  if(k==='5|2026-07-09'){r.dt.dist=142;r.dt.ok=false}
+  REC[k]=r;
+}
+(function gen(){
+  for(let day=1;day<=31;day++){const d=new Date(2026,6,day);if(d.getDay()===0)continue;T.forEach(t=>mkDay(t,d));}
+  for(let day=1;day<=4;day++){const d=new Date(2026,7,day);if(d.getDay()===0)continue;
+    T.forEach(t=>{ if(iso(d)===TODAY&&(t.id===4||t.id===7))return; mkDay(t,d);});}
+})();
+
+/* ============ Estadu UI ============ */
+const $=q=>document.querySelector(q);
+const TITLES={painel:['Painel','Rezumu prezensa ohin loron — ETI Dili'],profesor:['Profesór sira','Konta sira ne\'ebé uza aplikasaun ETI PRESENSA'],prezensa:['Prezensa','Lista prezensa ho evidénsia marka'],relatoriu:['Relatóriu','Rezumu prezensa tuir períodu'],konfig:['Konfigurasaun','Aparénsia no informasaun sistema']};
+const pF={who:'hotu',per:'loron',loron:'2026-08-03',fulan:7,semana:2};
+const rF={who:'hotu',per:'fulan',fulan:7,semana:2};
+
+function nav(v){
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('active',b.dataset.v===v));
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('on',s.id==='v-'+v));
+  $('#pageTitle').textContent=TITLES[v][0];$('#pageSub').textContent=TITLES[v][1];
+  ({painel:renderPainel,profesor:renderProf,prezensa:renderPrez,relatoriu:renderRep,konfig:()=>{}})[v]();
+}
+document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>nav(b.dataset.v));
+
+function fillWho(sel,val){sel.innerHTML='<option value="hotu">Profesór hotu-hotu</option>'+T.map(t=>`<option value="${t.id}">${t.naran}</option>`).join('');sel.value=val}
+function fillFulan(sel,val){sel.innerHTML=[7,8].map(m=>`<option value="${m}">${FULAN[m]} 2026</option>`).join('');sel.value=val}
+
+/* ============ Painel ============ */
+function renderPainel(){
+  const today=Object.values(REC).filter(r=>iso(r.d)===TODAY);
+  const punched=today.filter(r=>r.dt);
+  const seidauk=T.filter(t=>!punched.some(r=>r.tid===t.id));
+  const atraz=punched.filter(r=>r.dt.late).length;
+  $('#painelCards').innerHTML=[['Profesór total',T.length,''],['Marka ona',punched.length,`<small>/ ${T.length}</small>`],['Seidauk marka',seidauk.length,''],['Atrazadu ohin',atraz,'']]
+    .map(c=>`<div class="card"><div class="k">${c[0]}</div><div class="v">${c[1]}${c[2]}</div></div>`).join('');
+  $('#seidaukList').innerHTML=seidauk.length?'<table><tbody>'+seidauk.map(t=>`<tr><td class="name"><b>${t.naran}</b><small>${t.kargu}</small></td><td class="mut mono" style="text-align:right">${t.tel}</td></tr>`).join('')+'</tbody></table>':'<div class="empty">Profesór hotu marka tiha ona ✓</div>';
+  const feed=punched.map(r=>({t:T.find(x=>x.id===r.tid),p:r.dt})).sort((a,b)=>b.p.t.localeCompare(a.p.t));
+  $('#feedList').innerHTML='<table><tbody>'+feed.map(f=>`<tr><td class="name"><b>${f.t.naran}</b><small>Dader Tama · foto + GPS ✓</small></td><td style="text-align:right"><span class="chip ${f.p.late?'late':''}">${f.p.t}</span></td></tr>`).join('')+'</tbody></table>';
+}
+
+/* ============ Profesór ============ */
+function renderProf(){
+  const q=($('#profSearch').value||'').toLowerCase();
+  const list=T.filter(t=>(t.naran+t.email+t.kargu).toLowerCase().includes(q));
+  $('#profRows').innerHTML=list.map(t=>`<tr>
+    <td class="name"><b>${t.naran}</b><small>${t.email}</small></td>
+    <td class="mono">${t.numeru}</td><td>${t.kargu}</td>
+    <td class="mono mut">${t.tel}</td>
+    <td><span class="badge b-PREZENTE">Ativu</span></td></tr>`).join('')||'<tr><td colspan="5" class="empty">La hetan rezultadu</td></tr>';
+}
+$('#profSearch').oninput=renderProf;
+
+/* ============ Prezensa ============ */
+function periodFilter(f){
+  return Object.values(REC).filter(r=>{
+    if(f.who!=='hotu'&&r.tid!==+f.who)return false;
+    if(f.per==='loron')return iso(r.d)===f.loron;
+    if(r.d.getMonth()+1!==+f.fulan||r.d.getFullYear()!==2026)return false;
+    if(f.per==='semana')return semanaOf(r.d)===+f.semana;
+    return true;
+  });
+}
+function cell(p,sat){
+  if(sat)return'<td class="mut">×</td>';
+  if(!p)return'<td class="mut">—</td>';
+  return`<td><span class="chip ${p.late?'late':''}">${p.t}</span></td>`;
+}
+function renderPrez(){
+  pF.who=$('#pWho').value;
+  $('#pLoron').style.display=pF.per==='loron'?'':'none';
+  $('#pFulan').style.display=pF.per==='fulan'||pF.per==='semana'?'':'none';
+  $('#pSemana').style.display=pF.per==='semana'?'':'none';
+  $('#thProf').style.display=pF.who==='hotu'?'':'none';
+  const rows=periodFilter(pF).sort((a,b)=>iso(a.d).localeCompare(iso(b.d))||a.tid-b.tid);
+  $('#prezRows').innerHTML=rows.map(r=>{
+    const t=T.find(x=>x.id===r.tid),sat=r.d.getDay()===6,k=r.tid+'|'+iso(r.d);
+    const leave=r.estadu!=='PREZENTE';
+    return`<tr class="click" data-k="${k}">
+      <td class="name"><b>${pad(r.d.getDate())} ${FULAN[r.d.getMonth()+1]}</b><small>${LORON[r.d.getDay()]}</small></td>
+      ${pF.who==='hotu'?`<td class="name"><b>${t.naran}</b><small>${t.kargu}</small></td>`:''}
+      ${leave?`<td colspan="4" class="mut">${r.obs||'—'}</td>`:cell(r.dt)+cell(r.df)+cell(r.lt,sat)+cell(r.lf,sat)}
+      <td><span class="badge b-${r.estadu}">${r.estadu}</span></td></tr>`;
+  }).join('')||'<tr><td colspan="7" class="empty">La iha dadus ba períodu ne\'e</td></tr>';
+  document.querySelectorAll('#prezRows tr.click').forEach(tr=>tr.onclick=()=>openDay(tr.dataset.k));
+}
+$('#pWho').onchange=renderPrez;$('#pLoron').onchange=e=>{pF.loron=e.target.value;renderPrez()};
+$('#pFulan').onchange=e=>{pF.fulan=+e.target.value;renderPrez()};$('#pSemana').onchange=e=>{pF.semana=+e.target.value;renderPrez()};
+$('#pPer').querySelectorAll('button').forEach(b=>b.onclick=()=>{pF.per=b.dataset.p;$('#pPer').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));renderPrez()});
+
+/* ============ Relatóriu ============ */
+function renderRep(){
+  rF.who=$('#rWho').value;
+  $('#rFulan').style.display='';$('#rSemana').style.display=rF.per==='semana'?'':'none';
+  const rows=periodFilter(rF);
+  const who=rF.who==='hotu'?T:T.filter(t=>t.id===+rF.who);
+  const agg=who.map(t=>{
+    const rs=rows.filter(r=>r.tid===t.id);
+    const a={t,serv:rs.length,prez:0,atraz:0,falta:0,lis:0,mis:0};
+    rs.forEach(r=>{if(r.estadu==='PREZENTE'){a.prez++;if((r.dt&&r.dt.late)||(r.lt&&r.lt.late))a.atraz++}
+      else if(r.estadu==='FALTA')a.falta++;else if(r.estadu==='LISENSA')a.lis++;else if(r.estadu==='MISAUN')a.mis++;});
+    a.pct=a.serv?Math.round(a.prez/a.serv*100):0;return a;
+  });
+  const tot=k=>agg.reduce((s,a)=>s+a[k],0);
+  const pct=tot('serv')?Math.round(tot('prez')/tot('serv')*100):0;
+  $('#repCards').innerHTML=[['Prezensa',pct+'<small>%</small>'],['Atrazadu',tot('atraz')],['Falta',tot('falta')],['Lisensa + Misaun',tot('lis')+tot('mis')]]
+    .map(c=>`<div class="card"><div class="k">${c[0]}</div><div class="v">${c[1]}</div></div>`).join('');
+  $('#repRows').innerHTML=agg.map(a=>`<tr>
+    <td class="name"><b>${a.t.naran}</b><small>${a.t.kargu}</small></td>
+    <td class="mono">${a.serv}</td><td class="mono">${a.prez}</td>
+    <td class="mono" style="color:var(--warn)">${a.atraz}</td>
+    <td class="mono" style="color:var(--bad)">${a.falta}</td>
+    <td class="mono">${a.lis}</td><td class="mono">${a.mis}</td>
+    <td class="mono"><b>${a.pct}%</b></td></tr>`).join('');
+  window._agg=agg;
+}
+$('#rWho').onchange=renderRep;$('#rFulan').onchange=e=>{rF.fulan=+e.target.value;renderRep()};
+$('#rSemana').onchange=e=>{rF.semana=+e.target.value;renderRep()};
+$('#rPer').querySelectorAll('button').forEach(b=>b.onclick=()=>{rF.per=b.dataset.p;$('#rPer').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));renderRep()});
+$('#btnCsv').onclick=()=>{
+  const head='Profesor,Numeru ID,Loron servisu,Prezente,Atrazadu,Falta,Lisensa,Misaun,Pct\n';
+  const body=(window._agg||[]).map(a=>[a.t.naran,a.t.numeru,a.serv,a.prez,a.atraz,a.falta,a.lis,a.mis,a.pct+'%'].join(',')).join('\n');
+  const b=new Blob([head+body],{type:'text/csv'});const u=URL.createObjectURL(b);
+  const l=document.createElement('a');l.href=u;l.download=`relatoriu-prezensa-${FULAN[rF.fulan].toLowerCase()}-2026.csv`;l.click();URL.revokeObjectURL(u);
+  toast('Relatóriu CSV download ona ✓');
+};
+
+/* ============ Modals ============ */
+const ovl=$('#ovl'),box=$('#modalBox');
+function openM(html){box.innerHTML=html;ovl.classList.add('on');box.querySelectorAll('[data-close]').forEach(b=>b.onclick=closeM)}
+function closeM(){ovl.classList.remove('on')}
+ovl.onclick=e=>{if(e.target===ovl)closeM()};
+addEventListener('keydown',e=>{if(e.key==='Escape')closeM()});
+const XBTN='<button class="x" data-close><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>';
+
+function openDay(k){
+  const r=REC[k],t=T.find(x=>x.id===r.tid),sat=r.d.getDay()===6;
+  const punch=(p,lbl,sched)=>{
+    if(!p)return`<div class="punch"><div class="lbl">${lbl}<span>${sched}</span></div><div class="t mut">—</div><div class="ev mut">${sat&&lbl.includes('Lorokraik')?'La iha sesaun (Sábadu)':'Seidauk marka'}</div></div>`;
+    return`<div class="punch"><div class="lbl">${lbl}<span>${sched}</span></div>
+      <div class="t ${p.late?'late':''}">${p.t}${p.late?' <span style="font-size:11px;font-family:Inter">atrazadu</span>':''}</div>
+      <div class="ev"><span class="photo"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></span>Foto
+      <span class="geo ${p.ok?'ok':'no'}" style="display:flex;align-items:center;gap:4px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${p.ok?'Iha eskola':'Dook husi eskola'} · ${p.dist} m</span></div></div>`;
+  };
+  const leave=r.estadu!=='PREZENTE';
+  openM(`<header><div><h3>${t.naran}</h3><small>${LORON[r.d.getDay()]}, ${pad(r.d.getDate())} ${FULAN[r.d.getMonth()+1]} 2026 · <span class="badge b-${r.estadu}">${r.estadu}</span></small></div>${XBTN}</header>
+  <div class="body">${leave?`<div class="hint"><b>OBS:</b> ${r.obs||'—'}</div>`:`<div class="punches">
+    ${punch(r.dt,'Dader Tama','08:00')}${punch(r.df,'Dader Fila','12:00')}
+    ${punch(r.lt,'Lorokraik Tama','13:30')}${punch(r.lf,'Lorokraik Fila','17:30')}</div>
+  <div class="hint">Marka ida-idak rai ho foto no koordenada GPS — evidénsia ne'ebé troka asinatura iha livru papél.</div>`}</div>
+  <footer><button class="btn ghost" data-close>Taka</button></footer>`);
+}
+
+$('#btnAddProf').onclick=()=>openM(`<header><div><h3>Aumenta Profesór</h3><small>Kria konta foun ba aplikasaun ETI PRESENSA</small></div>${XBTN}</header>
+ <div class="body">
+   <div class="field"><label>Naran kompletu</label><input id="fNaran" placeholder="ez. Marcelina da Silva"></div>
+   <div class="row2"><div class="field"><label>Numeru ID</label><input id="fNum" type="number" placeholder="ez. 1071"></div>
+   <div class="field"><label>Sexu</label><select id="fSexu"><option value="FETO">Feto</option><option value="MANE">Mane</option></select></div></div>
+   <div class="field"><label>Email (uza atu login)</label><input id="fEmail" type="email" placeholder="naran@eti.tl"></div>
+   <div class="row2"><div class="field"><label>Kargu</label><input id="fKargu" placeholder="ez. Profesóra Kímika"></div>
+   <div class="field"><label>Nu. kontaktu</label><input id="fTel" placeholder="+670 …"></div></div>
+   <div class="hint">Sistema sei kria password inisiál no haruka ba email. Profesór uza email + password ne'e atu login iha aplikasaun móvel, hodi marka <b>check-in</b> no <b>check-out</b>.</div>
+ </div>
+ <footer><button class="btn ghost" data-close>Kansela</button><button class="btn" id="fSave">Kria konta</button></footer>`,
+ setTimeout(()=>{$('#fSave').onclick=()=>{
+   const naran=$('#fNaran').value.trim(),num=+$('#fNum').value,email=$('#fEmail').value.trim();
+   if(!naran||!num||!email){toast('Favor prenxe naran, numeru ID no email');return}
+   T.push({id:T.length+1,numeru:num,naran,kargu:$('#fKargu').value||'Profesór/a',email,tel:$('#fTel').value||'—',sexu:$('#fSexu').value});
+   closeM();renderProf();fillWho($('#pWho'),pF.who);fillWho($('#rWho'),rF.who);
+   toast('Konta profesór kria ona ✓');
+ }},0));
+
+$('#btnLisensa').onclick=()=>openM(`<header><div><h3>Rejistu Lisensa</h3><small>Marka estadu ba loron ne'ebé profesór la marka prezensa</small></div>${XBTN}</header>
+ <div class="body">
+   <div class="field"><label>Profesór</label><select id="lWho">${T.map(t=>`<option value="${t.id}">${t.naran}</option>`).join('')}</select></div>
+   <div class="row2"><div class="field"><label>Tipu</label><select id="lTipu"><option value="LISENSA">Lisensa</option><option value="MISAUN">Misaun</option><option value="FERIADU">Feriadu</option></select></div>
+   <div class="field"><label>&nbsp;</label><span class="badge b-LISENSA" style="margin-top:8px;display:inline-block">Estadu iha lista prezensa</span></div></div>
+   <div class="row2"><div class="field"><label>Husi data</label><input id="lFrom" type="date" value="2026-08-05"></div>
+   <div class="field"><label>To'o data</label><input id="lTo" type="date" value="2026-08-05"></div></div>
+   <div class="field"><label>OBS (razaun)</label><textarea id="lObs" rows="2" placeholder="ez. Moras — atestadu médiku"></textarea></div>
+ </div>
+ <footer><button class="btn ghost" data-close>Kansela</button><button class="btn" id="lSave">Rejistu</button></footer>`,
+ setTimeout(()=>{$('#lSave').onclick=()=>{
+   const tid=+$('#lWho').value,from=$('#lFrom').value,to=$('#lTo').value,est=$('#lTipu').value,obs=$('#lObs').value;
+   if(!from||!to||to<from){toast('Data la loos');return}
+   for(let d=new Date(from);iso(d)<=to;d.setDate(d.getDate()+1)){
+     if(d.getDay()===0)continue;
+     REC[tid+'|'+iso(d)]={tid,d:new Date(d),estadu:est,obs,dt:null,df:null,lt:null,lf:null};
+   }
+   closeM();renderPrez();toast(est.charAt(0)+est.slice(1).toLowerCase()+' rejistu ona ✓');
+ }},0));
+
+/* ============ Konfigurasaun ============ */
+const ACC=[['Teal','#0D9488'],['Azúl','#2563EB'],['Roxu','#7C3AED'],['Roza','#E11D48'],['Laranja','#EA580C'],['Matak','#16A34A']];
+function renderSw(cur){$('#swatches').innerHTML=ACC.map(a=>`<button class="sw ${a[1]===cur?'active':''}" title="${a[0]}" style="background:${a[1]}" data-c="${a[1]}"></button>`).join('');
+  document.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{document.documentElement.style.setProperty('--accent',b.dataset.c);renderSw(b.dataset.c)});}
+renderSw('#0D9488');
+$('#modeSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+  document.documentElement.dataset.mode=b.dataset.m;
+  $('#modeSeg').querySelectorAll('button').forEach(x=>x.classList.toggle('active',x===b));});
+$('#btnSaveCfg').onclick=()=>toast('Konfigurasaun rai ona ✓');
+
+/* ============ Toast + init ============ */
+let tt;function toast(msg){const t=$('#toast');t.textContent=msg;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2600)}
+fillWho($('#pWho'),'hotu');fillWho($('#rWho'),'hotu');fillFulan($('#pFulan'),7);fillFulan($('#rFulan'),7);
+$('#pFulan').style.display='none';$('#pSemana').style.display='none';$('#rSemana').style.display='none';
+renderPainel();renderProf();renderPrez();renderRep();
+$('#pageSub').textContent=TITLES.painel[1];
+</script>
+</body>
+</html>
