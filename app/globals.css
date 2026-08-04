@@ -1,26 +1,132 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Dark mode rides on html[data-mode="dark"], the attribute the prototype
+ * toggles, not Tailwind's .dark class. Almost nothing needs the variant —
+ * every colour below flips through its own variable — but it is here for the
+ * one-off that cannot.
+ */
+@custom-variant dark (&:where([data-mode="dark"] *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/*
+ * Design tokens, value for value from the :root block of
+ * docs/eti-admin-dashboard.html. They stay custom properties at runtime:
+ * Konfigurasaun rewrites --color-accent on <html>, and --color-soft plus every
+ * accent-tinted surface follows it without a rebuild.
+ */
+@theme {
+  --color-accent: #0d9488;
+  --color-bg: #f6f5f2;
+  --color-surface: #ffffff;
+  --color-text: #1d1a17;
+  --color-muted: #7a736b;
+  --color-border: #e8e4df;
+  --color-soft: color-mix(in srgb, var(--color-accent) 10%, transparent);
+  --color-ok: #16a34a;
+  --color-warn: #d97706;
+  --color-bad: #dc2626;
+  --color-info: #2563eb;
+  --color-viol: #7c3aed;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  /* The prototype's --r. */
+  --radius-card: 10px;
+
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-brand: var(--font-archivo), var(--font-inter), sans-serif;
+  --font-mono: var(--font-ibm-plex-mono), monospace;
+
+  --animate-fade: fade 0.18s ease;
+  --animate-pop: pop 0.16s ease;
+
+  @keyframes fade {
+    from {
+      opacity: 0;
+      transform: translateY(3px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Only these five change between modes; the accent is the same in both. */
+html[data-mode="dark"] {
+  --color-bg: #14120f;
+  --color-surface: #1d1a17;
+  --color-text: #f3f1ee;
+  --color-muted: #9a928a;
+  --color-border: #2c2823;
+}
+
+@layer base {
+  /* Tailwind's default border colour is currentColor; the prototype draws
+     every rule in --border. */
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-text);
+    font-family: var(--font-inter), system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-archivo), var(--font-inter), sans-serif;
+  }
+
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+
+  input,
+  select,
+  textarea {
+    font: inherit;
+    color: var(--color-text);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 7px 10px;
+    outline: none;
+    width: 100%;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 3px var(--color-soft);
+  }
+
+  ::placeholder {
+    color: var(--color-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
 }
