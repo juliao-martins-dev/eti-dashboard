@@ -38,6 +38,39 @@
   --animate-fade: fade 0.18s ease;
   --animate-pop: pop 0.16s ease;
 
+  /* Ken Burns drift for the login background; one per slide, cycled so two
+     neighbouring photos never move the same way. */
+  --animate-kenburns-1: kenburns-1 16s linear both;
+  --animate-kenburns-2: kenburns-2 16s linear both;
+  --animate-kenburns-3: kenburns-3 16s linear both;
+
+  @keyframes kenburns-1 {
+    from {
+      transform: scale(1);
+    }
+    to {
+      transform: scale(1.12) translate(1.4%, -0.9%);
+    }
+  }
+
+  @keyframes kenburns-2 {
+    from {
+      transform: scale(1.02);
+    }
+    to {
+      transform: scale(1.13) translate(-1.4%, 0.9%);
+    }
+  }
+
+  @keyframes kenburns-3 {
+    from {
+      transform: scale(1.12) translate(0.8%, 0.6%);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+
   @keyframes fade {
     from {
       opacity: 0;
