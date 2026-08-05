@@ -1,38 +1,36 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import {
+  ACCESS_KEY,
+  api,
+  getRefresh,
+  SESAUN_HOTU,
+  setTokens,
+} from "./api";
+import type { User } from "./types";
 
 /**
- * A demo gate, NOT authentication.
+ * The signed-in administrator.
  *
- * The credentials below are hardcoded so the login screen can be walked
- * through before the API is wired; anyone reading the JS bundle can see them,
- * and nothing on the dashboard is actually protected — every screen still
- * renders mock data. The real thing is `POST /api/auth/login/`, which already
- * exists in eti-api and returns a JWT pair plus the profile
- * (see docs/plan-request-api-to-backend.md §2). Replacing `login()` below with
- * that call, and storing the tokens instead of a flag, is the whole swap.
+ * Real authentication now: `POST /api/auth/login/` returns a JWT pair plus the
+ * profile, and every admin route needs an account with `is_staff` or
+ * `role="ADMIN"` (`accounts/permissions.EhAdmin`) or it answers 403.
  */
-const TEST_NARAN = "admin";
-const TEST_PASSWORD = "123";
 
-export const SESAUN_KEY = "eti.sesaun";
-
-export interface Sesaun {
-  naran: string;
-}
+/** The cached profile, so a reload draws the sidebar before /auth/me/ answers. */
+export const PERFIL_KEY = "eti.perfil";
 
 /**
- * Runs before paint: a logged-out visitor never sees a frame of the dashboard
- * before the redirect. The in-app guard below covers client-side navigation,
- * where no document load happens.
+ * Runs before paint: a visitor with no access token never sees a frame of the
+ * dashboard. The in-app guard covers client-side navigation and expiry.
  */
 export const SESAUN_BOOT = `(function(){try{
 if(location.pathname==='/login')return;
-if(!localStorage.getItem(${JSON.stringify(SESAUN_KEY)}))location.replace('/login');
+if(!localStorage.getItem(${JSON.stringify(ACCESS_KEY)}))location.replace('/login');
 }catch(x){}})();`;
 
-let snapshot: Sesaun | null = null;
+let snapshot: User | null = null;
 let adotadu = false;
 let listeners: Array<() => void> = [];
 
@@ -43,12 +41,12 @@ function subscribe(l: () => void) {
   };
 }
 
-function getSnapshot(): Sesaun | null {
+function getSnapshot(): User | null {
   if (!adotadu) {
     adotadu = true;
     try {
-      const raw = localStorage.getItem(SESAUN_KEY);
-      snapshot = raw ? (JSON.parse(raw) as Sesaun) : null;
+      const raw = localStorage.getItem(PERFIL_KEY);
+      snapshot = raw ? (JSON.parse(raw) as User) : null;
     } catch {
       snapshot = null;
     }
@@ -56,39 +54,68 @@ function getSnapshot(): Sesaun | null {
   return snapshot;
 }
 
-/** The server cannot read localStorage, so it renders as logged out. */
-const getServerSnapshot = (): Sesaun | null => null;
+/** The server cannot read localStorage, so it renders as signed out. */
+const getServerSnapshot = (): User | null => null;
 
-function publika(foun: Sesaun | null) {
+function publika(perfil: User | null) {
   adotadu = true;
-  snapshot = foun;
+  snapshot = perfil;
+  try {
+    if (perfil) localStorage.setItem(PERFIL_KEY, JSON.stringify(perfil));
+    else localStorage.removeItem(PERFIL_KEY);
+  } catch {
+    // Private mode; the session still works for this tab.
+  }
   for (const l of listeners) l();
 }
 
-/** True when the credentials matched. The caller decides where to go next. */
-export function login(naran: string, password: string): boolean {
-  if (naran.toLowerCase() !== TEST_NARAN || password !== TEST_PASSWORD) {
-    return false;
-  }
-  const sesaun: Sesaun = { naran: TEST_NARAN };
-  try {
-    localStorage.setItem(SESAUN_KEY, JSON.stringify(sesaun));
-  } catch {
-    // Private mode: the session lasts until the tab closes, which is enough.
-  }
-  publika(sesaun);
-  return true;
+// A refresh that could not be recovered anywhere in the app ends the session
+// here, so every screen reacts through the same path as an explicit logout.
+if (typeof window !== "undefined") {
+  addEventListener(SESAUN_HOTU, () => publika(null));
 }
 
-export function logout() {
+interface LoginResposta {
+  access: string;
+  refresh: string;
+  user: User;
+}
+
+/** Throws `ApiErru` (401 on bad credentials, 403 if the account is not admin). */
+export async function login(email: string, password: string): Promise<User> {
+  const d = await api<LoginResposta>("/auth/login/", {
+    method: "POST",
+    auth: false,
+    body: JSON.stringify({ email, password }),
+  });
+  setTokens(d.access, d.refresh);
+  publika(d.user);
+  return d.user;
+}
+
+export async function logout(): Promise<void> {
+  const refresh = getRefresh();
   try {
-    localStorage.removeItem(SESAUN_KEY);
+    if (refresh) {
+      await api("/auth/logout/", {
+        method: "POST",
+        body: JSON.stringify({ refresh }),
+      });
+    }
   } catch {
-    // Nothing stored to clear.
+    // The token may already be expired or blacklisted; signing out locally is
+    // what matters and must not be blocked by the server's answer.
   }
+  setTokens(null, null);
   publika(null);
 }
 
-export function useSesaun(): Sesaun | null {
+/** Re-reads the profile from the server, e.g. after a role change. */
+export async function karegaPerfil(): Promise<void> {
+  const perfil = await api<User>("/auth/me/");
+  publika(perfil);
+}
+
+export function useSesaun(): User | null {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
