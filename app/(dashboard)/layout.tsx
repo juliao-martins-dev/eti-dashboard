@@ -14,10 +14,15 @@ export default function DashboardLayout({
   const sesaun = useSesaun();
   const router = useRouter();
 
-  // SESAUN_BOOT already turns a logged-out visitor away on document load;
-  // this covers logging out from the sidebar, where there is no reload.
+  // Only an explicit null means signed out. `undefined` is the hydration
+  // render, which has no localStorage to read — treating that as signed out
+  // sent a refresh bouncing through /login and straight back here.
+  //
+  // SESAUN_BOOT has already turned away anyone without a token before paint,
+  // so this is really here for signing out from the sidebar and for a refresh
+  // token that expired mid-session, neither of which reloads the document.
   useEffect(() => {
-    if (!sesaun) router.replace("/login");
+    if (sesaun === null) router.replace("/login");
   }, [sesaun, router]);
 
   return (
