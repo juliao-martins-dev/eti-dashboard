@@ -1,10 +1,10 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { DetalleModal } from "@/components/DetalleModal";
-import { IconLisensa } from "@/components/icons";
 import { Filters } from "@/components/Filters";
+import { IconLisensa } from "@/components/icons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import {
@@ -15,115 +15,147 @@ import {
   Td,
   Th,
 } from "@/components/ui/DataTable";
-import { Field, Row2 } from "@/components/ui/Field";
+import { Field, Hint, Row2 } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
-import { Panel } from "@/components/ui/Panel";
+import { Empty, Panel } from "@/components/ui/Panel";
 import { PunchChip } from "@/components/ui/PunchChip";
 import { useToast } from "@/components/ui/Toast";
+import { ApiErru, mensajenErru } from "@/lib/api";
 import {
   dataDate,
   dataNaran,
   KOLUMNA_LISTA,
   LORON_KURTU,
   lorokraik,
+  markaBa,
   oras,
   ORARIU,
 } from "@/lib/format";
-import { markaBa } from "@/lib/mock-data";
-import { filtraPeriodu, type Filtru, type RejistuLoron } from "@/lib/periodu";
-import {
-  hasaiPrezensa,
-  rejistuLisensa,
-  useDadus,
-  type LisensaFoun,
-} from "@/lib/store";
-import type { Estadu, Marka } from "@/lib/types";
+import { useOhin } from "@/lib/ohin";
+import type { Filtru, Periodu } from "@/lib/periodu";
+import { hasaiEstadu, rejistuEstadu, useHotu } from "@/lib/prezensa";
+import { useProfesor } from "@/lib/store";
+import type { Data, Estadu, EstaduRejistu, Marka, PrezensaProfesorLoron } from "@/lib/types";
 
+/** PREZENTE is absent on purpose: only a punch can produce it. */
 const TIPU_LISENSA: { value: Estadu; label: string }[] = [
   { value: "LISENSA", label: "Lisensa" },
   { value: "MISAUN", label: "Misaun" },
   { value: "FERIADU", label: "Feriadu" },
+  { value: "FALTA", label: "Falta" },
 ];
 
-const LISENSA_VAZIU: LisensaFoun = {
-  profesor_id: 0,
-  estadu: "LISENSA",
-  husi: "2026-08-05",
-  toO: "2026-08-05",
-  obs: "",
-};
-
 export default function PrezensaPage() {
-  // useSearchParams needs a Suspense boundary in the App Router; the fallback
-  // never shows in practice because the page is client-rendered.
+  // useSearchParams needs a Suspense boundary in the App Router.
   return (
     <Suspense fallback={null}>
-      <Prezensa />
+      <Portaun />
     </Suspense>
   );
 }
 
-function Prezensa() {
-  const toast = useToast();
-  const { profesor, rejistu } = useDadus();
+/** Holds off until the client knows today, so no build-time date is hydrated. */
+function Portaun() {
+  const ohin = useOhin();
+  if (!ohin) {
+    return (
+      <Panel>
+        <Empty>Karega dadus…</Empty>
+      </Panel>
+    );
+  }
+  return <Prezensa ohin={ohin} />;
+}
 
-  // Relatóriu deep-links here as /prezensa?who=3&per=fulan&fulan=7&semana=2,
-  // read once as the initial filter — after that the toolbar owns it.
+function Prezensa({ ohin }: { ohin: Data }) {
+  const toast = useToast();
+  const { profesor } = useProfesor();
   const sp = useSearchParams();
+  const agora = dataDate(ohin);
+
+  // Relatóriu deep-links here as ?who=&per=&fulan=&tinan=&semana=; read once
+  // as the initial filter, after which the toolbar owns it.
   const [filtru, setFiltru] = useState<Filtru>(() => {
     const who = sp.get("who");
     const per = sp.get("per");
     return {
-      who: who && who !== "hotu" && Number(who) ? Number(who) : "hotu",
-      per: per === "semana" || per === "fulan" ? per : "loron",
-      loron: sp.get("loron") ?? "2026-08-03",
-      fulan: Number(sp.get("fulan")) || 7,
-      semana: Number(sp.get("semana")) || 2,
+      who: who && Number(who) ? Number(who) : "hotu",
+      per: per === "semana" || per === "fulan" ? (per as Periodu) : "loron",
+      loron: sp.get("loron") ?? ohin,
+      fulan: Number(sp.get("fulan")) || agora.getMonth() + 1,
+      tinan: Number(sp.get("tinan")) || agora.getFullYear(),
+      semana: Number(sp.get("semana")) || 1,
     };
   });
 
-  const [detalle, setDetalle] = useState<RejistuLoron | null>(null);
+  const { dadus, karega, erru, refaz } = useHotu(filtru);
+
+  const [detalle, setDetalle] = useState<PrezensaProfesorLoron | null>(null);
   const [lisensaAbertu, setLisensaAbertu] = useState(false);
-  const [lisensa, setLisensa] = useState<LisensaFoun>(LISENSA_VAZIU);
+  const [haruka, setHaruka] = useState(false);
+  const [konflitu, setKonflitu] = useState<Data[] | null>(null);
+  const [lisensa, setLisensa] = useState<EstaduRejistu>({
+    profesor: 0,
+    estadu: "LISENSA",
+    husi: ohin,
+    too: ohin,
+    obs: "",
+  });
 
-  const linha = useMemo(
-    () =>
-      filtraPeriodu(rejistu, filtru).sort(
-        (a, b) =>
-          a.prezensa.data.localeCompare(b.prezensa.data) ||
-          a.profesor.id - b.profesor.id,
-      ),
-    [rejistu, filtru],
-  );
-
+  const linha = dadus?.profesor ?? [];
   const komProfesor = filtru.who === "hotu";
 
-  function abreLisensa(inisial?: Partial<LisensaFoun>) {
+  function abreLisensa(inisial?: Partial<EstaduRejistu>) {
+    setKonflitu(null);
     setLisensa({
-      ...LISENSA_VAZIU,
-      profesor_id: profesor[0]?.id ?? 0,
+      profesor: profesor[0]?.id ?? 0,
+      estadu: "LISENSA",
+      husi: ohin,
+      too: ohin,
+      obs: "",
       ...inisial,
     });
     setLisensaAbertu(true);
   }
 
-  function salvaLisensa() {
-    if (!lisensa.husi || !lisensa.toO || lisensa.toO < lisensa.husi) {
-      toast("Data la loos");
+  async function salvaLisensa() {
+    if (!lisensa.profesor) {
+      toast("Favor hili profesór");
       return;
     }
-    rejistuLisensa(lisensa);
-    setLisensaAbertu(false);
-    setDetalle(null);
-    toast(
-      `${lisensa.estadu.charAt(0)}${lisensa.estadu.slice(1).toLowerCase()} rejistu ona ✓`,
-    );
+    setKonflitu(null);
+    setHaruka(true);
+    try {
+      const r = await rejistuEstadu(lisensa);
+      setLisensaAbertu(false);
+      setDetalle(null);
+      refaz();
+      toast(`${r.total} loron rejistu ho ${r.estadu.toLowerCase()} ✓`);
+    } catch (e) {
+      // The whole range is refused when any day already holds punches — the
+      // server names them, so the admin can go and look.
+      if (e instanceof ApiErru && e.code === "iha_marka") {
+        setKonflitu((e.corpo.loron as Data[]) ?? []);
+      } else {
+        toast(mensajenErru(e));
+      }
+    } finally {
+      setHaruka(false);
+    }
   }
 
-  function hasai(r: RejistuLoron) {
-    hasaiPrezensa(r.profesor.id, r.prezensa.data);
-    setDetalle(null);
-    toast(`${r.prezensa.estadu_display} hasai ona — loron fila ba mamuk`);
+  async function hasai(r: PrezensaProfesorLoron) {
+    setHaruka(true);
+    try {
+      await hasaiEstadu(r.profesor.id, r.data);
+      setDetalle(null);
+      refaz();
+      toast("Rejistu hasai ona — loron fila ba mamuk");
+    } catch (e) {
+      toast(mensajenErru(e));
+    } finally {
+      setHaruka(false);
+    }
   }
 
   return (
@@ -150,23 +182,27 @@ function Prezensa() {
             </tr>
           </thead>
           <tbody>
-            {linha.length ? (
+            {erru ? (
+              <EmptyRow colSpan={komProfesor ? 7 : 6}>{erru}</EmptyRow>
+            ) : karega ? (
+              <EmptyRow colSpan={komProfesor ? 7 : 6}>Karega dadus…</EmptyRow>
+            ) : linha.length ? (
               linha.map((r) => {
                 const p = r.prezensa;
-                const d = dataDate(p.data);
+                const d = dataDate(r.data);
                 const sabadu = d.getDay() === 6;
-                // Anything but PREZENTE was written by the administration, so
-                // there are no punches to show — the OBS takes their place.
-                const marka = p.estadu === "PREZENTE";
+                // Only PREZENTE has punches to show; a hand-written day puts
+                // its OBS in their place, and an empty day has neither.
+                const komMarka = p?.estadu === "PREZENTE";
 
                 return (
                   <ClickRow
-                    key={`${r.profesor.id}|${p.data}`}
+                    key={`${r.profesor.id}|${r.data}`}
                     onOpen={() => setDetalle(r)}
                   >
                     <Td>
                       <NameCell
-                        naran={dataNaran(p.data)}
+                        naran={dataNaran(r.data)}
                         sub={LORON_KURTU[d.getDay()]}
                       />
                     </Td>
@@ -180,7 +216,7 @@ function Prezensa() {
                       </Td>
                     ) : null}
 
-                    {marka ? (
+                    {komMarka ? (
                       KOLUMNA_LISTA.map((k) => (
                         <Sela
                           key={k.kolumna}
@@ -190,12 +226,16 @@ function Prezensa() {
                       ))
                     ) : (
                       <Td colSpan={4} className="text-muted">
-                        {p.obs || "—"}
+                        {p?.obs || "—"}
                       </Td>
                     )}
 
                     <Td>
-                      <Badge estadu={p.estadu} />
+                      {p?.estadu ? (
+                        <Badge estadu={p.estadu} />
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
                     </Td>
                   </ClickRow>
                 );
@@ -212,15 +252,16 @@ function Prezensa() {
       {detalle ? (
         <DetalleModal
           profesor={detalle.profesor}
-          data={detalle.prezensa.data}
+          data={detalle.data}
           prezensa={detalle.prezensa}
           onClose={() => setDetalle(null)}
           asaun={
-            detalle.prezensa.estadu !== "PREZENTE" ? (
+            detalle.prezensa && detalle.prezensa.estadu !== "PREZENTE" ? (
               <>
                 <Button
                   variant="ghost"
                   className="mr-auto text-bad hover:border-bad hover:text-bad"
+                  disabled={haruka}
                   onClick={() => hasai(detalle)}
                 >
                   Hasai rejistu
@@ -228,13 +269,13 @@ function Prezensa() {
                 <Button
                   variant="ghost"
                   onClick={() => {
-                    const p = detalle.prezensa;
+                    const p = detalle.prezensa!;
                     setDetalle(null);
                     abreLisensa({
-                      profesor_id: detalle.profesor.id,
+                      profesor: detalle.profesor.id,
                       estadu: p.estadu,
-                      husi: p.data,
-                      toO: p.data,
+                      husi: detalle.data,
+                      too: detalle.data,
                       obs: p.obs,
                     });
                   }}
@@ -254,19 +295,25 @@ function Prezensa() {
         subtitle="Marka estadu ba loron ne'ebé profesór la marka prezensa"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setLisensaAbertu(false)}>
+            <Button
+              variant="ghost"
+              disabled={haruka}
+              onClick={() => setLisensaAbertu(false)}
+            >
               Kansela
             </Button>
-            <Button onClick={salvaLisensa}>Rejistu</Button>
+            <Button disabled={haruka} onClick={salvaLisensa}>
+              {haruka ? "Haruka…" : "Rejistu"}
+            </Button>
           </>
         }
       >
         <Field label="Profesór" htmlFor="lWho">
           <select
             id="lWho"
-            value={lisensa.profesor_id}
+            value={lisensa.profesor}
             onChange={(e) =>
-              setLisensa({ ...lisensa, profesor_id: Number(e.target.value) })
+              setLisensa({ ...lisensa, profesor: Number(e.target.value) })
             }
           >
             {profesor.map((p) => (
@@ -313,8 +360,8 @@ function Prezensa() {
             <input
               id="lTo"
               type="date"
-              value={lisensa.toO}
-              onChange={(e) => setLisensa({ ...lisensa, toO: e.target.value })}
+              value={lisensa.too}
+              onChange={(e) => setLisensa({ ...lisensa, too: e.target.value })}
             />
           </Field>
         </Row2>
@@ -328,6 +375,22 @@ function Prezensa() {
             placeholder="ez. Moras — atestadu médiku"
           />
         </Field>
+
+        {konflitu ? (
+          <p
+            role="alert"
+            className="rounded-[8px] border border-[color-mix(in_srgb,var(--color-bad)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-bad)_9%,transparent)] px-[11px] py-[9px] text-[12px] font-medium text-bad"
+          >
+            Loron ne&apos;e iha marka ona, la bele taka ho estadu:{" "}
+            <b className="font-mono">{konflitu.join(", ")}</b>. La iha buat ida
+            rejistu — troka períodu no koko fila fali.
+          </p>
+        ) : (
+          <Hint>
+            Servidor sei salta Domingu no kria lista prezensa se seidauk iha.
+            Loron ho marka ona la bele taka.
+          </Hint>
+        )}
       </Modal>
     </>
   );
