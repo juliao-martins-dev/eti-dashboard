@@ -6,31 +6,48 @@ import { useRouter } from "next/navigation";
 import { BackgroundSlideshow } from "@/components/BackgroundSlideshow";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { ApiErru, mensajenErru } from "@/lib/api";
 import { login, useSesaun } from "@/lib/auth";
 
 export default function LoginPage() {
   const router = useRouter();
   const sesaun = useSesaun();
-  const [naran, setNaran] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [erru, setErru] = useState<string | null>(null);
+  const [haruka, setHaruka] = useState(false);
 
   // Someone who is already signed in has no business on this screen.
   useEffect(() => {
     if (sesaun) router.replace("/");
   }, [sesaun, router]);
 
-  function tama(e: FormEvent) {
+  async function tama(e: FormEvent) {
     e.preventDefault();
-    if (!naran.trim() || !password) {
-      setErru("Favor prenxe naran uzuáriu no password.");
+    if (!email.trim() || !password) {
+      setErru("Favor prenxe email no password.");
       return;
     }
-    if (login(naran.trim(), password)) {
+
+    setHaruka(true);
+    try {
+      const perfil = await login(email.trim(), password);
+      // Every screen behind the login calls an admin-only route; an account
+      // without EhAdmin would sign in and then hit 403 everywhere.
+      if (perfil.role !== "ADMIN") {
+        setErru("Konta ne'e la iha asesu ba painel administrasaun.");
+        setHaruka(false);
+        return;
+      }
       router.replace("/");
-      return;
+    } catch (e) {
+      setErru(
+        e instanceof ApiErru && e.status === 401
+          ? "Email ka password sala. Favor koko fila fali."
+          : mensajenErru(e),
+      );
+      setHaruka(false);
     }
-    setErru("Naran uzuáriu ka password sala. Favor koko fila fali.");
   }
 
   return (
@@ -57,17 +74,18 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={tama} className="mt-6 flex flex-col gap-3">
-          <Field label="Naran uzuáriu" htmlFor="lNaran">
+          <Field label="Email" htmlFor="lEmail">
             <input
-              id="lNaran"
-              value={naran}
+              id="lEmail"
+              type="email"
+              value={email}
               autoComplete="username"
               autoFocus
               onChange={(e) => {
-                setNaran(e.target.value);
+                setEmail(e.target.value);
                 setErru(null);
               }}
-              placeholder="admin"
+              placeholder="naran@eti.tl"
             />
           </Field>
 
@@ -81,7 +99,7 @@ export default function LoginPage() {
                 setPassword(e.target.value);
                 setErru(null);
               }}
-              placeholder="••••"
+              placeholder="••••••••"
             />
           </Field>
 
@@ -94,14 +112,13 @@ export default function LoginPage() {
             </p>
           ) : null}
 
-          <Button type="submit" className="mt-1 justify-center">
-            Tama
+          <Button type="submit" disabled={haruka} className="mt-1 justify-center">
+            {haruka ? "Tama…" : "Tama"}
           </Button>
         </form>
 
         <div className="mt-5 rounded-[8px] border border-dashed border-border bg-bg px-[11px] py-[9px] text-center text-[12px] text-muted">
-          Konta test: <b className="font-mono text-text">admin</b> /{" "}
-          <b className="font-mono text-text">123</b>
+          Uza konta ETI-Dili ho asesu <b className="text-text">ADMIN</b>.
         </div>
       </div>
     </div>
