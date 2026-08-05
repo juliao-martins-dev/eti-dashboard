@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Archivo, IBM_Plex_Mono, Inter } from "next/font/google";
+import { ApiFallback } from "@/components/ApiFallback";
 import { ToastProvider } from "@/components/ui/Toast";
 import { SESAUN_BOOT } from "@/lib/auth";
 import { THEME_BOOT } from "@/lib/theme";
@@ -44,7 +45,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <script dangerouslySetInnerHTML={{ __html: SESAUN_BOOT }} />
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>
+          {children}
+          {/* Above the routes, so a dead network is caught on /login too. */}
+          <ApiFallback />
+        </ToastProvider>
       </body>
     </html>
   );
