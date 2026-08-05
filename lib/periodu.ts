@@ -1,7 +1,7 @@
 import { query } from "./api";
 import type { Data } from "./types";
 
-export type Periodu = "loron" | "semana" | "fulan";
+export type Periodu = "loron" | "semana" | "fulan" | "tinan";
 
 /** What the toolbar above Prezensa and Relatóriu is currently asking for. */
 export interface Filtru {
@@ -16,20 +16,22 @@ export interface Filtru {
 /** `semana_husi` can reach 6 when a long month starts late in the week. */
 export const SEMANA_LISTA = [1, 2, 3, 4, 5, 6] as const;
 
-/** The twelve months up to and including the current one, newest first. */
-export function fulanLista(ohin: Date): { fulan: number; tinan: number }[] {
-  return Array.from({ length: 12 }, (_, i) => {
-    const d = new Date(ohin.getFullYear(), ohin.getMonth() - i, 1);
-    return { fulan: d.getMonth() + 1, tinan: d.getFullYear() };
-  });
+export const FULAN_LISTA = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const;
+
+/** The sheets only go back as far as the system has been running. */
+export function tinanLista(agora: number): number[] {
+  return Array.from({ length: 5 }, (_, i) => agora - i);
 }
 
 /**
  * The query string for `GET /api/prezensa/hotu/`. `data` and the
  * fulan/tinan/semana trio are mutually exclusive server-side — `data` wins —
  * so only one of them is ever sent.
+ *
+ * `tinan` mode has no server equivalent; callers fetch the twelve months and
+ * merge, so this builds the query for one of them via `fulan`.
  */
-export function hotuQuery(f: Filtru, marka = true): string {
+export function hotuQuery(f: Filtru, marka = true, fulan?: number): string {
   const profesor = f.who === "hotu" ? undefined : f.who;
   const ligeru = marka ? undefined : "false";
 
@@ -37,7 +39,7 @@ export function hotuQuery(f: Filtru, marka = true): string {
     return query({ data: f.loron, profesor, marka: ligeru });
   }
   return query({
-    fulan: f.fulan,
+    fulan: fulan ?? f.fulan,
     tinan: f.tinan,
     semana: f.per === "semana" ? f.semana : undefined,
     profesor,
