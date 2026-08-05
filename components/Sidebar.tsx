@@ -93,11 +93,31 @@ export function Sidebar({
 
   useEffect(() => {
     if (!abertu) return;
+
     const eskape = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose?.();
     };
+
+    // Hold the page still behind the drawer; content scrolling under an open
+    // overlay is what makes a drawer feel loose on a phone.
+    const overflowTuan = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    // Crossing into the desktop layout turns the drawer back into the
+    // permanent sidebar, so the overlay state has to go with it — otherwise
+    // the backdrop and the scroll lock stay behind.
+    const luan = matchMedia("(min-width: 48rem)");
+    const kresi = (e: MediaQueryListEvent) => {
+      if (e.matches) onClose?.();
+    };
+
     addEventListener("keydown", eskape);
-    return () => removeEventListener("keydown", eskape);
+    luan.addEventListener("change", kresi);
+    return () => {
+      document.body.style.overflow = overflowTuan;
+      removeEventListener("keydown", eskape);
+      luan.removeEventListener("change", kresi);
+    };
   }, [abertu, onClose]);
 
   return (
@@ -109,21 +129,30 @@ export function Sidebar({
         onClick={onClose}
         className={cx(
           "fixed inset-0 z-40 bg-[rgba(20,15,10,0.45)] transition-opacity md:hidden",
-          abertu ? "opacity-100" : "pointer-events-none opacity-0",
+          // Matched to the panel so the dimming and the slide land together.
+          abertu
+            ? "opacity-100 duration-300 ease-out"
+            : "pointer-events-none opacity-0 duration-200 ease-in",
         )}
       />
 
       <aside
         className={cx(
           "fixed top-0 left-0 z-50 flex h-screen w-[218px] shrink-0 flex-col border-r border-border bg-surface",
-          // `visibility` is discrete, so it flips in at once and only flips out
-          // after the slide finishes — which also keeps the closed drawer out
-          // of the tab order on a phone.
-          "transition-[transform,visibility] duration-200 ease-out",
+          // Transform *and* visibility: `visibility` is discrete but keeps the
+          // panel visible for the whole slide out, flipping only at the end —
+          // which is also what keeps a closed drawer out of the tab order.
+          // Shadow is in the list so the depth fades rather than snapping.
+          "transition-[transform,visibility,box-shadow]",
           // `md:left-auto` matters: a sticky element with left:0 would also
           // stick sideways the moment a wide table scrolls the page.
-          "md:sticky md:left-auto md:z-auto md:visible md:translate-x-0 md:transition-none",
-          abertu ? "translate-x-0" : "invisible -translate-x-full",
+          "md:sticky md:left-auto md:z-auto md:visible md:translate-x-0 md:shadow-none md:transition-none",
+          // Asymmetric on purpose: entering decelerates over 300ms so it feels
+          // like it settles, leaving accelerates out in 200ms so dismissing
+          // never feels like waiting.
+          abertu
+            ? "translate-x-0 shadow-[0_10px_40px_rgba(0,0,0,0.18)] duration-300 ease-out"
+            : "invisible -translate-x-full duration-200 ease-in",
         )}
       >
       <div className="flex items-center gap-[10px] border-b border-border px-4 pt-[18px] pb-[14px]">
