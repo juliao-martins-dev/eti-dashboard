@@ -1,15 +1,20 @@
 "use client";
 
+import { ESKOLA, naranFile, selu, TITULU } from "./export-comun";
 import { dataDate, LORON_API } from "./format";
 import { selaAsinatura, selaObs, selaOras, type Relatoriu } from "./relatoriu";
 
 /**
- * The same report as a real .xlsx: a "Rezumu" sheet with the totals shown on
- * screen, and one sheet per teacher laid out like the printed book.
+ * The attendance book as a real .xlsx — one sheet per teacher, laid out page
+ * for page like lib/export-pdf.ts: the school header block with the seal, the
+ * rule, the title, Naran/Kargu, then the grouped grid.
  *
- * ExcelJS is loaded on demand — it is the heaviest thing the dashboard can
+ * ExcelJS is loaded on demand; it is the heaviest thing the dashboard can
  * pull, and only a Download press needs it.
  */
+
+/** The eleven columns of the printed grid. */
+const KOLUMNA_TOTAL = 11;
 
 /** Excel forbids : \ / ? * [ ] in sheet names and caps them at 31 characters. */
 function naranSheet(naran: string, uzadu: Set<string>): string {
@@ -21,77 +26,93 @@ function naranSheet(naran: string, uzadu: Set<string>): string {
   return foun;
 }
 
-export async function exportaExcel(rel: Relatoriu, naranFile: string): Promise<void> {
+const KAIXA = {
+  top: { style: "thin" as const },
+  left: { style: "thin" as const },
+  bottom: { style: "thin" as const },
+  right: { style: "thin" as const },
+};
+
+export async function exportaExcel(rel: Relatoriu, ficheiru: string): Promise<void> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
   wb.creator = "ETI PRESENSA";
   wb.created = new Date();
 
-  /* ── Rezumu ─────────────────────────────────────────────────────────── */
-  const rezumu = wb.addWorksheet("Rezumu");
-  rezumu.mergeCells("A1:I1");
-  rezumu.getCell("A1").value = `LISTA PREZENSA BA PROFESÓR/A ETI DILI — ${rel.periodu}`;
-  rezumu.getCell("A1").font = { bold: true, size: 12 };
-  rezumu.getCell("A1").alignment = { horizontal: "center" };
+  // Registered once and referenced from every sheet, so the file carries a
+  // single copy of the seal rather than one per teacher.
+  const logo = await selu();
+  const logoId =
+    logo !== null
+      ? wb.addImage({ base64: logo, extension: "png" })
+      : null;
 
-  rezumu.addRow([]);
-  const kabesalyu = rezumu.addRow([
-    "Profesór",
-    "Numeru ID",
-    "Kargu",
-    "Loron servisu",
-    "Prezente",
-    "Atrazadu",
-    "Falta",
-    "Lisensa",
-    "Misaun",
-    "%",
-  ]);
-  kabesalyu.font = { bold: true };
-  kabesalyu.alignment = { horizontal: "center" };
-  kabesalyu.eachCell((c) => {
-    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F0F0" } };
-    c.border = { bottom: { style: "thin" } };
-  });
-
-  for (const a of rel.rezumu) {
-    rezumu.addRow([
-      a.profesor.naran_kompletu,
-      a.profesor.numeru_id,
-      a.profesor.kargu || "",
-      a.serv,
-      a.prez,
-      a.atraz,
-      a.falta,
-      a.lis,
-      a.mis,
-      a.pct / 100,
-    ]);
-  }
-  rezumu.getColumn(10).numFmt = "0%";
-  rezumu.columns.forEach((c, i) => {
-    c.width = i === 0 ? 30 : i === 2 ? 26 : 13;
-  });
-
-  /* ── One sheet per teacher, in the paper layout ─────────────────────── */
   const uzadu = new Set<string>();
+
   for (const pajina of rel.liuro) {
     const ws = wb.addWorksheet(naranSheet(pajina.profesor.naran_kompletu, uzadu));
 
-    ws.mergeCells("A1:K1");
-    ws.getCell("A1").value = `LISTA PREZENSA BA PROFESÓR/A ETI DILI — ${rel.periodu}`;
-    ws.getCell("A1").font = { bold: true, size: 11 };
-    ws.getCell("A1").alignment = { horizontal: "center" };
+    // Printing it should give back the PDF.
+    ws.pageSetup = {
+      paperSize: 9, // A4
+      orientation: "portrait",
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: {
+        left: 0.4,
+        right: 0.4,
+        top: 0.4,
+        bottom: 0.5,
+        header: 0.2,
+        footer: 0.2,
+      },
+    };
+    ws.headerFooter = { oddFooter: "&C&P | Page" };
 
-    ws.getCell("A2").value = "Naran :";
-    ws.getCell("B2").value = pajina.profesor.naran_kompletu;
-    ws.getCell("A3").value = "Kargu :";
-    ws.getCell("B3").value = pajina.profesor.kargu || "—";
-    ws.getCell("A2").font = { bold: true };
-    ws.getCell("A3").font = { bold: true };
+    const fundu = (linha: number) => `A${linha}:${String.fromCharCode(64 + KOLUMNA_TOTAL)}${linha}`;
+    const sentradu = (linha: number, texto: string, size: number, bold: boolean) => {
+      ws.mergeCells(fundu(linha));
+      const c = ws.getCell(`A${linha}`);
+      c.value = texto;
+      c.font = { bold, size };
+      c.alignment = { horizontal: "center", vertical: "middle" };
+      return c;
+    };
+
+    /* ── Header block, same order as the PDF ──────────────────────────── */
+    sentradu(1, ESKOLA.naran, 12, true);
+    sentradu(2, ESKOLA.sigla, 10, true);
+    sentradu(3, ESKOLA.morada, 8, false);
+    // The PDF closes the block with a double rule; a double bottom border is
+    // the same mark in a spreadsheet.
+    sentradu(4, ESKOLA.kontaktu, 8, false).border = { bottom: { style: "double" } };
+    sentradu(5, `${TITULU} — ${rel.periodu.toUpperCase()}`, 10, true);
+
+    ws.getRow(1).height = 18;
+    ws.getRow(5).height = 20;
+
+    if (logoId !== null) {
+      ws.addImage(logoId, {
+        tl: { col: 0.15, row: 0.15 },
+        ext: { width: 52, height: 52 },
+        editAs: "oneCell",
+      });
+    }
+
+    /* ── Naran / Kargu ────────────────────────────────────────────────── */
+    ws.getCell("A6").value = "Naran :";
+    ws.getCell("A7").value = "Kargu :";
+    ws.getCell("A6").font = { bold: true };
+    ws.getCell("A7").font = { bold: true };
+    ws.mergeCells("B6:E6");
+    ws.mergeCells("B7:E7");
+    ws.getCell("B6").value = pajina.profesor.naran_kompletu;
+    ws.getCell("B7").value = pajina.profesor.kargu || "—";
 
     ws.addRow([]);
-    // Two header rows, mirroring the grouped columns on the printed sheet.
+
+    /* ── Two-row grouped header ───────────────────────────────────────── */
     const h1 = ws.addRow([
       "Data",
       "Loron",
@@ -125,19 +146,18 @@ export async function exportaExcel(rel: Relatoriu, naranFile: string): Promise<v
     ws.mergeCells(h1.number, 11, h2.number, 11);
 
     for (const linha of [h1, h2]) {
-      linha.font = { bold: true };
+      linha.font = { bold: true, size: 9 };
       linha.alignment = { horizontal: "center", vertical: "middle" };
-      linha.eachCell((c) => {
-        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF0F0F0" } };
-        c.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
+      linha.eachCell({ includeEmpty: true }, (c) => {
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F5F5" } };
+        c.border = KAIXA;
       });
     }
+    // The header repeats when the sheet spills onto a second printed page.
+    ws.views = [{ state: "frozen", ySplit: h2.number }];
+    ws.pageSetup.printTitlesRow = `${h1.number}:${h2.number}`;
 
+    /* ── One row per working day ──────────────────────────────────────── */
     for (const r of pajina.loron) {
       const d = dataDate(r.data);
       const [dt, df, lt, lf] = selaOras(r);
@@ -155,21 +175,21 @@ export async function exportaExcel(rel: Relatoriu, naranFile: string): Promise<v
         alf,
         selaObs(r),
       ]);
-      linha.eachCell((c, i) => {
-        c.border = {
-          top: { style: "thin" },
-          left: { style: "thin" },
-          bottom: { style: "thin" },
-          right: { style: "thin" },
-        };
-        if (i !== 2 && i !== 11) c.alignment = { horizontal: "center" };
+      linha.font = { size: 9 };
+      linha.eachCell({ includeEmpty: true }, (c, i) => {
+        c.border = KAIXA;
+        // Only Loron and Obs read as prose; everything else is a time.
+        if (i !== 2 && i !== KOLUMNA_TOTAL) {
+          c.alignment = { horizontal: "center", vertical: "middle" };
+        }
+        if (c.value === "—") c.font = { size: 9, color: { argb: "FF8C8C8C" } };
       });
     }
 
     ws.getColumn(1).width = 7;
-    ws.getColumn(2).width = 16;
-    for (let i = 3; i <= 10; i++) ws.getColumn(i).width = 12;
-    ws.getColumn(11).width = 30;
+    ws.getColumn(2).width = 17;
+    for (let i = 3; i <= 10; i++) ws.getColumn(i).width = 11;
+    ws.getColumn(KOLUMNA_TOTAL).width = 26;
   }
 
   const buffer = await wb.xlsx.writeBuffer();
@@ -179,13 +199,11 @@ export async function exportaExcel(rel: Relatoriu, naranFile: string): Promise<v
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = naranFile;
+  a.download = ficheiru;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-/** `lista-prezensa-hotu-jullu-2026.xlsx` */
-export function naranFileExcel(periodu: string, who: string): string {
-  const p = periodu.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return `lista-prezensa-${who}-${p}.xlsx`;
-}
+/** `lista-prezensa-hotu-agostu-2026.xlsx` */
+export const naranFileExcel = (periodu: string, who: string) =>
+  naranFile(periodu, who, "xlsx");
