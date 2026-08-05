@@ -1,21 +1,35 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { DetalleModal } from "@/components/DetalleModal";
-import { Empty, Grid2, Panel, PanelTitle } from "@/components/ui/Panel";
 import { ClickRow, DataTable, NameCell, Td } from "@/components/ui/DataTable";
+import { Empty, Grid2, Panel, PanelTitle } from "@/components/ui/Panel";
 import { PunchChip } from "@/components/ui/PunchChip";
 import { StatCard, StatCards } from "@/components/ui/StatCard";
-import { markaBa, ohinHotu, TODAY } from "@/lib/mock-data";
-import { useDadus } from "@/lib/store";
+import { markaBa } from "@/lib/format";
+import { useOhinHotu } from "@/lib/prezensa";
+import { useProfesor } from "@/lib/store";
 import type { PrezensaProfesor } from "@/lib/types";
 
 export default function PainelPage() {
-  // Reads the store rather than the seed so a lisensa registered on Prezensa
-  // for today is reflected here without a reload.
-  const { profesor, rejistu } = useDadus();
-  const ohin = useMemo(() => ohinHotu(profesor, rejistu), [profesor, rejistu]);
+  const { dadus: ohin, karega, erru } = useOhinHotu();
+  const { profesor } = useProfesor();
   const [detalle, setDetalle] = useState<PrezensaProfesor | null>(null);
+
+  if (erru) {
+    return (
+      <Panel>
+        <Empty>{erru}</Empty>
+      </Panel>
+    );
+  }
+  if (karega || !ohin) {
+    return (
+      <Panel>
+        <Empty>Karega dadus…</Empty>
+      </Panel>
+    );
+  }
 
   const markaOna = ohin.profesor.filter((l) => l.marka_ona);
   const seidauk = ohin.profesor.filter((l) => !l.marka_ona);
@@ -33,17 +47,20 @@ export default function PainelPage() {
 
   /**
    * `ohin-hotu` nests only id / numeru_id / naran / kargu / foto per teacher,
-   * so the phone number to chase an absence with has to be joined from the
-   * roster. Against the API that becomes a second call, not a wider one.
+   * so the number to chase an absence with comes from the roster call.
    */
   const kontaktu = (profesorId: number) =>
-    profesor.find((p) => p.id === profesorId)?.nu_kontaktu ?? "—";
+    profesor.find((p) => p.id === profesorId)?.nu_kontaktu || "—";
 
   return (
     <>
       <StatCards>
         <StatCard k="Profesór total" v={ohin.rezumu.total} />
-        <StatCard k="Marka ona" v={ohin.rezumu.marka_ona} sub={`/ ${ohin.rezumu.total}`} />
+        <StatCard
+          k="Marka ona"
+          v={ohin.rezumu.marka_ona}
+          sub={`/ ${ohin.rezumu.total}`}
+        />
         <StatCard k="Seidauk marka" v={ohin.rezumu.seidauk_marka} />
         <StatCard k="Atrazadu ohin" v={atrazadu} />
       </StatCards>
@@ -76,30 +93,34 @@ export default function PainelPage() {
 
         <Panel>
           <PanelTitle>Marka foun ohin loron</PanelTitle>
-          <DataTable>
-            <tbody>
-              {feed.map(({ liña, marka }) => (
-                <ClickRow key={liña.profesor.id} onOpen={() => setDetalle(liña)}>
-                  <Td>
-                    <NameCell
-                      naran={liña.profesor.naran_kompletu}
-                      sub={`${marka.sesaun_display} ${marka.tipu_display} · foto + GPS ✓`}
-                    />
-                  </Td>
-                  <Td className="text-right">
-                    <PunchChip marka={marka} />
-                  </Td>
-                </ClickRow>
-              ))}
-            </tbody>
-          </DataTable>
+          {feed.length ? (
+            <DataTable>
+              <tbody>
+                {feed.map(({ liña, marka }) => (
+                  <ClickRow key={liña.profesor.id} onOpen={() => setDetalle(liña)}>
+                    <Td>
+                      <NameCell
+                        naran={liña.profesor.naran_kompletu}
+                        sub={`${marka.sesaun_display} ${marka.tipu_display} · foto + GPS ✓`}
+                      />
+                    </Td>
+                    <Td className="text-right">
+                      <PunchChip marka={marka} />
+                    </Td>
+                  </ClickRow>
+                ))}
+              </tbody>
+            </DataTable>
+          ) : (
+            <Empty>Seidauk iha marka ohin loron</Empty>
+          )}
         </Panel>
       </Grid2>
 
       {detalle ? (
         <DetalleModal
           profesor={detalle.profesor}
-          data={TODAY}
+          data={ohin.data}
           prezensa={detalle.prezensa}
           onClose={() => setDetalle(null)}
         />
