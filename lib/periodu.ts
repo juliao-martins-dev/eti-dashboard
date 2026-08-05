@@ -1,6 +1,5 @@
-import { dataDate, semanaHusi } from "./format";
-import { TINAN } from "./mock-data";
-import type { Data, Prezensa, PrezensaProfesor } from "./types";
+import { query } from "./api";
+import type { Data } from "./types";
 
 export type Periodu = "loron" | "semana" | "fulan";
 
@@ -10,31 +9,38 @@ export interface Filtru {
   per: Periodu;
   loron: Data;
   fulan: number;
+  tinan: number;
   semana: number;
 }
 
-/** The months the mock covers; a real build would read these off the sheets. */
-export const FULAN_LISTA = [7, 8] as const;
+/** `semana_husi` can reach 6 when a long month starts late in the week. */
+export const SEMANA_LISTA = [1, 2, 3, 4, 5, 6] as const;
 
-export const SEMANA_LISTA = [1, 2, 3, 4, 5] as const;
-
-/** A report line that is known to have a day attached. */
-export interface RejistuLoron extends PrezensaProfesor {
-  prezensa: Prezensa;
+/** The twelve months up to and including the current one, newest first. */
+export function fulanLista(ohin: Date): { fulan: number; tinan: number }[] {
+  return Array.from({ length: 12 }, (_, i) => {
+    const d = new Date(ohin.getFullYear(), ohin.getMonth() - i, 1);
+    return { fulan: d.getMonth() + 1, tinan: d.getFullYear() };
+  });
 }
 
-export function filtraPeriodu(
-  rejistu: PrezensaProfesor[],
-  f: Filtru,
-): RejistuLoron[] {
-  return rejistu.filter((r): r is RejistuLoron => {
-    if (!r.prezensa) return false;
-    if (f.who !== "hotu" && r.profesor.id !== f.who) return false;
-    if (f.per === "loron") return r.prezensa.data === f.loron;
+/**
+ * The query string for `GET /api/prezensa/hotu/`. `data` and the
+ * fulan/tinan/semana trio are mutually exclusive server-side — `data` wins —
+ * so only one of them is ever sent.
+ */
+export function hotuQuery(f: Filtru, marka = true): string {
+  const profesor = f.who === "hotu" ? undefined : f.who;
+  const ligeru = marka ? undefined : "false";
 
-    const d = dataDate(r.prezensa.data);
-    if (d.getMonth() + 1 !== f.fulan || d.getFullYear() !== TINAN) return false;
-    if (f.per === "semana") return semanaHusi(d) === f.semana;
-    return true;
+  if (f.per === "loron") {
+    return query({ data: f.loron, profesor, marka: ligeru });
+  }
+  return query({
+    fulan: f.fulan,
+    tinan: f.tinan,
+    semana: f.per === "semana" ? f.semana : undefined,
+    profesor,
+    marka: ligeru,
   });
 }
