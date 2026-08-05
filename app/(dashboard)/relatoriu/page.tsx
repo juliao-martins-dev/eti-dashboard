@@ -17,25 +17,11 @@ import { Empty, Panel } from "@/components/ui/Panel";
 import { StatCard, StatCards } from "@/components/ui/StatCard";
 import { useToast } from "@/components/ui/Toast";
 import { mensajenErru } from "@/lib/api";
-import { downloadCsv } from "@/lib/csv";
 import { dataDate } from "@/lib/format";
 import { useOhin } from "@/lib/ohin";
 import type { Filtru } from "@/lib/periodu";
 import { useRelatoriu, type Relatoriu } from "@/lib/relatoriu";
 import type { Data } from "@/lib/types";
-
-const KABESALYU_CSV = [
-  "Profesor",
-  "Numeru ID",
-  "Kargu",
-  "Loron servisu",
-  "Prezente",
-  "Atrazadu",
-  "Falta",
-  "Lisensa",
-  "Misaun",
-  "Pct",
-] as const;
 
 export default function RelatoriuPage() {
   const ohin = useOhin();
@@ -62,7 +48,7 @@ function RelatoriuView({ ohin }: { ohin: Data }) {
     tinan: agora.getFullYear(),
     semana: 1,
   });
-  const [export_, setExport] = useState<"pdf" | "excel" | "csv" | null>(null);
+  const [export_, setExport] = useState<"pdf" | "excel" | null>(null);
 
   const { dadus, karega, erru } = useRelatoriu(filtru);
   const agg = dadus?.rezumu ?? [];
@@ -78,7 +64,7 @@ function RelatoriuView({ ohin }: { ohin: Data }) {
     return p.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   };
 
-  async function exporta(tipu: "pdf" | "excel" | "csv", rel: Relatoriu | null) {
+  async function exporta(tipu: "pdf" | "excel", rel: Relatoriu | null) {
     if (!rel || !rel.liuro.length) {
       toast("La iha dadus atu download");
       return;
@@ -89,28 +75,10 @@ function RelatoriuView({ ohin }: { ohin: Data }) {
         const { exportaPdf, naranFilePdf } = await import("@/lib/export-pdf");
         await exportaPdf(rel, naranFilePdf(rel.periodu, alvu()));
         toast("Relatóriu PDF download ona ✓");
-      } else if (tipu === "excel") {
+      } else {
         const { exportaExcel, naranFileExcel } = await import("@/lib/export-excel");
         await exportaExcel(rel, naranFileExcel(rel.periodu, alvu()));
         toast("Relatóriu Excel download ona ✓");
-      } else {
-        downloadCsv(
-          `lista-prezensa-${alvu()}-${rel.periodu.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.csv`,
-          KABESALYU_CSV,
-          rel.rezumu.map((a) => [
-            a.profesor.naran_kompletu,
-            a.profesor.numeru_id,
-            a.profesor.kargu || "",
-            a.serv,
-            a.prez,
-            a.atraz,
-            a.falta,
-            a.lis,
-            a.mis,
-            `${a.pct}%`,
-          ]),
-        );
-        toast("Relatóriu CSV download ona ✓");
       }
     } catch (e) {
       toast(mensajenErru(e));
@@ -147,22 +115,14 @@ function RelatoriuView({ ohin }: { ohin: Data }) {
           onClick={() => exporta("pdf", dadus)}
         >
           <IconDownload />
-          {export_ === "pdf" ? "Kria PDF…" : "PDF"}
+          {export_ === "pdf" ? "Kria PDF…" : "Export ba PDF"}
         </Button>
         <Button
-          variant="ghost"
           disabled={okupadu || karega}
           onClick={() => exporta("excel", dadus)}
         >
           <IconDownload />
-          {export_ === "excel" ? "Kria Excel…" : "Excel"}
-        </Button>
-        <Button
-          disabled={okupadu || karega}
-          onClick={() => exporta("csv", dadus)}
-        >
-          <IconDownload />
-          CSV
+          {export_ === "excel" ? "Kria Excel…" : "Export ba Excel"}
         </Button>
       </Filters>
 
