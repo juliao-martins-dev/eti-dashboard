@@ -12,11 +12,11 @@ import {
   KOLUMNA_LISTA,
   LORON_KURTU,
   lorokraik,
+  markaBa,
   oras,
   ORARIU,
   pad,
 } from "@/lib/format";
-import { markaBa } from "@/lib/mock-data";
 import type { Data, Prezensa, Profesor } from "@/lib/types";
 
 /**
