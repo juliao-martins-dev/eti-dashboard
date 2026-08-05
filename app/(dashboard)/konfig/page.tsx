@@ -6,19 +6,11 @@ import { Field } from "@/components/ui/Field";
 import { Grid2, Panel, PanelTitle } from "@/components/ui/Panel";
 import { Seg } from "@/components/ui/Seg";
 import { useToast } from "@/components/ui/Toast";
+import { apiBase } from "@/lib/api";
 import { cx } from "@/lib/cx";
-import { hamoosDadus, useDadus } from "@/lib/store";
+import { oras } from "@/lib/format";
+import { useKonfig } from "@/lib/prezensa";
 import { ACCENT, setAccent, setModu, useTema, type Modu } from "@/lib/theme";
-
-/** Read off eti-api's settings; the panel is a mirror, not a form. */
-const SISTEMA: { naran: string; valor: string; mono?: boolean }[] = [
-  { naran: "Oras dadér", valor: "08:00 — 12:00", mono: true },
-  { naran: "Oras lorokraik", valor: "13:30 — 17:30", mono: true },
-  { naran: "Limite sesaun", valor: "13:00", mono: true },
-  { naran: "Sábadu lorokraik", valor: "La iha sesaun" },
-  { naran: "Geofence (raiu eskola)", valor: "100 m", mono: true },
-  { naran: "Obriga fatin", valor: "Ativu" },
-];
 
 const MODU: { value: Modu; label: string }[] = [
   { value: "light", label: "☀ Naroman" },
@@ -28,7 +20,7 @@ const MODU: { value: Modu; label: string }[] = [
 export default function KonfigPage() {
   const toast = useToast();
   const { accent, modu } = useTema();
-  const { profesor, rejistu } = useDadus();
+  const { dadus: konfig, karega, erru } = useKonfig();
 
   return (
     <Grid2>
@@ -83,42 +75,42 @@ export default function KonfigPage() {
           </span>
         </PanelTitle>
         <div className="px-4 pt-[6px] pb-3">
-          {SISTEMA.map((s) => (
-            <Kv key={s.naran} naran={s.naran}>
-              <b className={s.mono ? "font-mono" : undefined}>{s.valor}</b>
-            </Kv>
-          ))}
-        </div>
-      </Panel>
-
-      <Panel>
-        <PanelTitle>
-          Dadus mock
-          <span className="text-[11px] font-normal text-muted">
-            rai iha localStorage
-          </span>
-        </PanelTitle>
-        <div className="flex flex-col gap-4 p-4">
-          <div>
-            <Kv naran="Profesór iha lista">
-              <b className="font-mono">{profesor.length}</b>
-            </Kv>
-            <Kv naran="Rejistu prezensa">
-              <b className="font-mono">{rejistu.length}</b>
-            </Kv>
-          </div>
-          {/* Drops added teachers and hand-written days, back to the seed. The
-              theme keys are separate on purpose and stay untouched. */}
-          <Button
-            variant="ghost"
-            className="self-start text-bad hover:border-bad hover:text-bad"
-            onClick={() => {
-              hamoosDadus();
-              toast("Dadus mock hamoos ona — fila ba dadus orijinál ✓");
-            }}
-          >
-            Hamoos dadus
-          </Button>
+          {erru ? (
+            <div className="py-[9px] text-[13px] text-bad">{erru}</div>
+          ) : karega || !konfig ? (
+            <div className="py-[9px] text-[13px] text-muted">Karega dadus…</div>
+          ) : (
+            <>
+              <Kv naran="Oras dadér">
+                <b className="font-mono">
+                  {oras(konfig.oras_dader_tama)} — {oras(konfig.oras_dader_fila)}
+                </b>
+              </Kv>
+              <Kv naran="Oras lorokraik">
+                <b className="font-mono">
+                  {oras(konfig.oras_lorokraik_tama)} —{" "}
+                  {oras(konfig.oras_lorokraik_fila)}
+                </b>
+              </Kv>
+              <Kv naran="Limite sesaun">
+                <b className="font-mono">{oras(konfig.limite_sesaun)}</b>
+              </Kv>
+              <Kv naran="Sábadu lorokraik">
+                <b>La iha sesaun</b>
+              </Kv>
+              <Kv naran="Geofence (raiu eskola)">
+                <b className="font-mono">{konfig.eskola_raiu_metru} m</b>
+              </Kv>
+              <Kv naran="Obriga fatin">
+                <b className={konfig.eskola_obriga_fatin ? undefined : "text-warn"}>
+                  {konfig.eskola_obriga_fatin ? "Ativu" : "Dezativadu"}
+                </b>
+              </Kv>
+              <Kv naran="Servidor API">
+                <b className="font-mono text-[12px]">{apiBase()}</b>
+              </Kv>
+            </>
+          )}
         </div>
       </Panel>
     </Grid2>
@@ -127,7 +119,7 @@ export default function KonfigPage() {
 
 function Kv({ naran, children }: { naran: string; children: ReactNode }) {
   return (
-    <div className="flex justify-between border-b border-border py-[9px] text-[13px] last:border-b-0">
+    <div className="flex justify-between gap-3 border-b border-border py-[9px] text-[13px] last:border-b-0">
       <span className="text-muted">{naran}</span>
       {children}
     </div>
