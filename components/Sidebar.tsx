@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { logout } from "@/lib/auth";
 import {
   IconPainel,
   IconPrezensa,
@@ -12,8 +11,12 @@ import {
   IconRelatoriu,
 } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
-import { useSesaun } from "@/lib/auth";
+import { mensajenErru } from "@/lib/api";
+import { atualizaFoto, logout, useSesaun } from "@/lib/auth";
 import { cx } from "@/lib/cx";
+
+/** Anything larger is a phone original; the API has no upload limit of its own. */
+const FOTO_MAX = 5 * 1024 * 1024;
 
 // Konfigurasaun is deliberately absent: it lives in the admin chip menu at the
 // foot of the sidebar, next to logout, rather than beside the daily screens.
@@ -31,6 +34,46 @@ const inisiais = (naran: string) =>
     .map((p) => p[0])
     .join("")
     .toUpperCase();
+
+/**
+ * The profile photo, or initials on the accent circle until there is one.
+ *
+ * `unoptimized` because `foto` is an absolute URL on whichever host is serving
+ * eti-api — that address changes between networks, and routing a 30px avatar
+ * through the image optimiser would mean pinning every host in next.config.
+ */
+function Avatar({
+  foto,
+  naran,
+  tamañu,
+}: {
+  foto: string | null;
+  naran: string;
+  tamañu: number;
+}) {
+  if (foto) {
+    return (
+      <Image
+        src={foto}
+        alt={naran}
+        width={tamañu}
+        height={tamañu}
+        unoptimized
+        className="shrink-0 rounded-full object-cover"
+        style={{ width: tamañu, height: tamañu }}
+      />
+    );
+  }
+  return (
+    <div
+      aria-hidden="true"
+      style={{ width: tamañu, height: tamañu }}
+      className="flex shrink-0 items-center justify-center rounded-full bg-accent font-brand text-[12px] font-semibold text-white"
+    >
+      {inisiais(naran)}
+    </div>
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -85,16 +128,17 @@ export function Sidebar() {
 }
 
 /**
- * The admin chip opens a small menu: profile view, a jump to Konfigurasaun,
- * and a logout that only toasts — there is no session to end until the API
- * arrives, but the affordance is where it will live.
+ * The admin chip: their own photo, and a menu to replace it, jump to
+ * Konfigurasaun or sign out.
  */
 function UserChip() {
   const router = useRouter();
   const toast = useToast();
   const sesaun = useSesaun();
   const [abertu, setAbertu] = useState(false);
+  const [haruka, setHaruka] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const foneRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!abertu) return;
@@ -118,19 +162,62 @@ function UserChip() {
   // The profile cached at login; the guard sends you to /login without one.
   const naran = sesaun?.naran_kompletu ?? "…";
 
+  async function trokaFoto(e: ChangeEvent<HTMLInputElement>) {
+    const foto = e.target.files?.[0];
+    // Clear it either way, so picking the same file again after a failure
+    // still fires a change event.
+    e.target.value = "";
+    if (!foto) return;
+
+    if (!foto.type.startsWith("image/")) {
+      toast("Presiza hili imajen ida");
+      return;
+    }
+    if (foto.size > FOTO_MAX) {
+      toast("Foto boot liu — máximu 5 MB");
+      return;
+    }
+
+    setHaruka(true);
+    try {
+      await atualizaFoto(foto);
+      toast("Foto atualiza ona ✓");
+    } catch (err) {
+      toast(mensajenErru(err));
+    } finally {
+      setHaruka(false);
+    }
+  }
+
   return (
     <div ref={ref} className="relative border-t border-border p-3">
       {abertu ? (
         <div className="absolute bottom-full left-3 z-40 mb-1 w-[calc(100%-24px)] animate-pop rounded-[10px] border border-border bg-surface p-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-          <div className="border-b border-border px-[10px] pt-[7px] pb-2">
-            <b className="block text-[12.5px]">{naran}</b>
-            <small className="block truncate text-[11px] text-muted">
-              {sesaun?.email}
-            </small>
-            {sesaun?.kargu ? (
-              <small className="block text-[11px] text-muted">{sesaun.kargu}</small>
-            ) : null}
+          <div className="flex items-center gap-[9px] border-b border-border px-[10px] pt-[7px] pb-2">
+            <Avatar foto={sesaun?.foto ?? null} naran={naran} tamañu={36} />
+            <div className="min-w-0">
+              <b className="block truncate text-[12.5px]">{naran}</b>
+              <small className="block truncate text-[11px] text-muted">
+                {sesaun?.email}
+              </small>
+              {sesaun?.kargu ? (
+                <small className="block truncate text-[11px] text-muted">
+                  {sesaun.kargu}
+                </small>
+              ) : null}
+            </div>
           </div>
+          <button
+            type="button"
+            className={item}
+            disabled={haruka}
+            onClick={() => {
+              setAbertu(false);
+              foneRef.current?.click();
+            }}
+          >
+            {haruka ? "Haruka foto…" : sesaun?.foto ? "Troka foto" : "Aumenta foto"}
+          </button>
           <button
             type="button"
             className={item}
@@ -163,9 +250,7 @@ function UserChip() {
         onClick={() => setAbertu((a) => !a)}
         className="flex w-full items-center gap-[9px] rounded-[8px] p-1 text-left hover:bg-bg"
       >
-        <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-accent font-brand text-[12px] font-semibold text-white">
-          {inisiais(naran)}
-        </div>
+        <Avatar foto={sesaun?.foto ?? null} naran={naran} tamañu={30} />
         <div className="min-w-0">
           <b className="block truncate text-[12.5px]">{naran}</b>
           <small className="block text-[11px] text-muted">
@@ -173,6 +258,15 @@ function UserChip() {
           </small>
         </div>
       </button>
+
+      {/* Lives outside the menu so the picker survives the menu closing. */}
+      <input
+        ref={foneRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={trokaFoto}
+      />
     </div>
   );
 }
