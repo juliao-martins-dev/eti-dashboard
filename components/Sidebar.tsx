@@ -76,11 +76,56 @@ function Avatar({
   );
 }
 
-export function Sidebar() {
+/**
+ * Below `md` the sidebar is an off-canvas drawer the topbar's menu button
+ * opens; from `md` up it is the sticky column it has always been, pixel for
+ * pixel. The desktop classes all sit behind the `md:` prefix so nothing about
+ * the wide layout changes.
+ */
+export function Sidebar({
+  abertu = false,
+  onClose,
+}: {
+  abertu?: boolean;
+  onClose?: () => void;
+}) {
   const pathname = usePathname();
 
+  useEffect(() => {
+    if (!abertu) return;
+    const eskape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    addEventListener("keydown", eskape);
+    return () => removeEventListener("keydown", eskape);
+  }, [abertu, onClose]);
+
   return (
-    <aside className="sticky top-0 flex h-screen w-[218px] shrink-0 flex-col border-r border-border bg-surface">
+    <>
+      {/* Only ever on top of a narrow screen; `md:hidden` keeps it out of the
+          way of the desktop layout entirely. */}
+      <div
+        aria-hidden="true"
+        onClick={onClose}
+        className={cx(
+          "fixed inset-0 z-40 bg-[rgba(20,15,10,0.45)] transition-opacity md:hidden",
+          abertu ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+      />
+
+      <aside
+        className={cx(
+          "fixed top-0 left-0 z-50 flex h-screen w-[218px] shrink-0 flex-col border-r border-border bg-surface",
+          // `visibility` is discrete, so it flips in at once and only flips out
+          // after the slide finishes — which also keeps the closed drawer out
+          // of the tab order on a phone.
+          "transition-[transform,visibility] duration-200 ease-out",
+          // `md:left-auto` matters: a sticky element with left:0 would also
+          // stick sideways the moment a wide table scrolls the page.
+          "md:sticky md:left-auto md:z-auto md:visible md:translate-x-0 md:transition-none",
+          abertu ? "translate-x-0" : "invisible -translate-x-full",
+        )}
+      >
       <div className="flex items-center gap-[10px] border-b border-border px-4 pt-[18px] pb-[14px]">
         <Image
           src="/icon.png"
@@ -108,6 +153,9 @@ export function Sidebar() {
             <Link
               key={href}
               href={href}
+              // Closing on navigation rather than on a pathname effect: the
+              // drawer covers the page it just moved to.
+              onClick={onClose}
               aria-current={active ? "page" : undefined}
               className={cx(
                 "flex w-full items-center gap-[10px] rounded-[8px] px-[10px] py-[9px] text-left",
@@ -123,8 +171,9 @@ export function Sidebar() {
         })}
       </nav>
 
-      <UserChip />
-    </aside>
+        <UserChip />
+      </aside>
+    </>
   );
 }
 
