@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  IconFoto,
   IconPainel,
   IconPrezensa,
   IconProfesor,
@@ -193,8 +194,28 @@ function UserChip() {
     <div ref={ref} className="relative border-t border-border p-3">
       {abertu ? (
         <div className="absolute bottom-full left-3 z-40 mb-1 w-[calc(100%-24px)] animate-pop rounded-[10px] border border-border bg-surface p-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
-          <div className="flex items-center gap-[9px] border-b border-border px-[10px] pt-[7px] pb-2">
-            <Avatar foto={sesaun?.foto ?? null} naran={naran} tamañu={36} />
+          <div className="flex items-center gap-[10px] border-b border-border px-[10px] pt-[9px] pb-[10px]">
+            <div className="relative shrink-0">
+              <Avatar foto={sesaun?.foto ?? null} naran={naran} tamañu={44} />
+              {/* The ring in --surface cuts the badge out of the avatar, so it
+                  reads as attached rather than dropped on top. */}
+              <button
+                type="button"
+                disabled={haruka}
+                onClick={() => foneRef.current?.click()}
+                aria-label={sesaun?.foto ? "Troka foto" : "Aumenta foto"}
+                title={sesaun?.foto ? "Troka foto" : "Aumenta foto"}
+                className={cx(
+                  "absolute -right-[3px] -bottom-[3px] flex h-[19px] w-[19px] items-center justify-center rounded-full border-2 border-surface bg-accent text-white",
+                  "[&_svg]:h-[10px] [&_svg]:w-[10px]",
+                  haruka
+                    ? "animate-pulse cursor-default"
+                    : "hover:brightness-[1.08] active:scale-95",
+                )}
+              >
+                <IconFoto />
+              </button>
+            </div>
             <div className="min-w-0">
               <b className="block truncate text-[12.5px]">{naran}</b>
               <small className="block truncate text-[11px] text-muted">
@@ -207,17 +228,6 @@ function UserChip() {
               ) : null}
             </div>
           </div>
-          <button
-            type="button"
-            className={item}
-            disabled={haruka}
-            onClick={() => {
-              setAbertu(false);
-              foneRef.current?.click();
-            }}
-          >
-            {haruka ? "Haruka foto…" : sesaun?.foto ? "Troka foto" : "Aumenta foto"}
-          </button>
           <button
             type="button"
             className={item}
