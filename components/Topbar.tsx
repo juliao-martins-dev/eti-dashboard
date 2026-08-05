@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { dataKompletu } from "@/lib/format";
-import { TODAY } from "@/lib/mock-data";
+import { useOhin } from "@/lib/ohin";
 
 const TITULU: Record<string, [string, string]> = {
   "/": ["Painel", "Rezumu prezensa ohin loron — ETI Dili"],
@@ -15,6 +15,7 @@ const TITULU: Record<string, [string, string]> = {
 export function Topbar() {
   const pathname = usePathname();
   const [titulu, sub] = TITULU[pathname] ?? TITULU["/"];
+  const ohin = useOhin();
 
   return (
     <header className="flex items-end justify-between gap-3 px-[26px] pt-5 pb-[14px]">
@@ -22,11 +23,12 @@ export function Topbar() {
         <h1 className="text-[19px] font-bold">{titulu}</h1>
         <p className="mt-[2px] text-[12.5px] text-muted">{sub}</p>
       </div>
-      {/* Today comes from the mock, not the clock: the whole dataset is built
-          around 04 Agostu 2026, and a real date would disagree with it. */}
       <div className="text-right text-[12.5px] text-muted">
         Ohin loron
-        <b className="block font-mono text-[12px] text-text">{dataKompletu(TODAY)}</b>
+        {/* Empty until hydration — the build date would be wrong by morning. */}
+        <b className="block min-h-[17px] font-mono text-[12px] text-text">
+          {ohin ? dataKompletu(ohin) : ""}
+        </b>
       </div>
     </header>
   );
