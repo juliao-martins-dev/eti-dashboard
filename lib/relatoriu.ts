@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, mensajenErru, type Rekursu } from "./api";
+import { MARKA_ASINATURA } from "./export-comun";
 import { dataDate, FULAN_NARAN, markaBa, oras } from "./format";
 import { hotuQuery, type Filtru } from "./periodu";
 import type { HotuResposta, PrezensaProfesorLoron, Profesor } from "./types";
@@ -177,11 +178,12 @@ export function selaAsinatura(
   r: PrezensaProfesorLoron,
 ): [string, string, string, string] {
   const p = r.prezensa;
+  const m = MARKA_ASINATURA;
   return [
-    markaBa(p, "ORAS_DADER_TAMA") ? "✓" : "",
-    markaBa(p, "ORAS_DADER_FILA") ? "✓" : "",
-    markaBa(p, "ORAS_LOROKRAIK_TAMA") ? "✓" : "",
-    markaBa(p, "ORAS_LOROKRAIK_FILA") ? "✓" : "",
+    markaBa(p, "ORAS_DADER_TAMA") ? m : "",
+    markaBa(p, "ORAS_DADER_FILA") ? m : "",
+    markaBa(p, "ORAS_LOROKRAIK_TAMA") ? m : "",
+    markaBa(p, "ORAS_LOROKRAIK_FILA") ? m : "",
   ];
 }
 
