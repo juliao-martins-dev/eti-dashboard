@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 /**
  * The one place that talks to eti-api.
@@ -16,18 +16,78 @@ export const REFRESH_KEY = "eti.refresh";
 /** Fired when the session cannot be recovered; the shell sends you to /login. */
 export const SESAUN_HOTU = "eti:sesaun-hotu";
 
+/** Fired when a request never reached the server, so the shell can offer a swap. */
+export const API_SEM_LIGASAUN = "eti:api-sem-ligasaun";
+
+/** Where the runtime override lives once an admin has confirmed a swap. */
+export const API_KEY = "eti.api";
+
 /**
- * NEXT_PUBLIC_API_URL wins. Without it the API is assumed to sit on port 8000
- * of whatever host is serving the dashboard, so one build works on localhost,
- * on 192.168.0.63 and on 10.214.94.41 without an env file per network.
+ * The addresses eti-api answers on. The school moves between two networks and
+ * only one is reachable at a time, so the dashboard offers the other when a
+ * request cannot connect.
+ */
+export const API_HOSTS = [
+  "http://10.214.94.41:8000/api",
+  "http://192.168.0.63:8000/api",
+] as const;
+
+const normaliza = (u: string) => u.replace(/\/+$/, "");
+
+/**
+ * A confirmed runtime override wins, then NEXT_PUBLIC_API_URL, then port 8000
+ * of whatever host is serving the dashboard — so one build works on localhost
+ * and on either LAN without an env file per network.
+ *
+ * The override is checked first because it is the only one that can change
+ * without a rebuild: NEXT_PUBLIC_* is inlined at build time.
  */
 export function apiBase(): string {
+  if (typeof window !== "undefined") {
+    try {
+      const rai = localStorage.getItem(API_KEY);
+      if (rai) return normaliza(rai);
+    } catch {
+      // Private mode; fall through to the build-time value.
+    }
+  }
   const env = process.env.NEXT_PUBLIC_API_URL;
-  if (env) return env.replace(/\/+$/, "");
+  if (env) return normaliza(env);
   if (typeof window !== "undefined") {
     return `${window.location.protocol}//${window.location.hostname}:8000/api`;
   }
   return "http://localhost:8000/api";
+}
+
+/** Persist a swap. `null` goes back to the build-time default. */
+export function setApiBase(url: string | null) {
+  try {
+    if (url) localStorage.setItem(API_KEY, normaliza(url));
+    else localStorage.removeItem(API_KEY);
+  } catch {
+    // Nothing to persist to; the swap would not survive a reload anyway.
+  }
+  baseCache = null;
+}
+
+/*
+ * Reading the base during render has to go through a snapshot: the override
+ * lives in localStorage, which the prerender cannot see, so returning it
+ * straight from `apiBase()` would hydrate a different string than it rendered.
+ */
+let baseCache: string | null = null;
+const baseKliente = (): string => (baseCache ??= apiBase());
+const baseServidor = (): string => "";
+const semSubscribe = () => () => {};
+
+export function useApiBase(): string {
+  return useSyncExternalStore(semSubscribe, baseKliente, baseServidor);
+}
+
+/** The other known host, or null when the current base is the only candidate. */
+export function apiAlternativa(): string | null {
+  const agora = apiBase();
+  return API_HOSTS.find((h) => normaliza(h) !== agora) ?? null;
 }
 
 export class ApiErru extends Error {
@@ -149,6 +209,9 @@ export async function api<T>(path: string, opsaun: ApiOpsaun = {}): Promise<T> {
   try {
     res = await manda(auth ? getAccess() : null);
   } catch {
+    // Nothing reached the server: wrong network, or the API is down. The shell
+    // listens for this and offers the other known host.
+    dispatchEvent(new Event(API_SEM_LIGASAUN));
     throw new ApiErru(
       0,
       "La bele konekta ba servidor. Verifika ligasaun ba eti-api.",
