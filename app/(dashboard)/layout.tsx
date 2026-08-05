@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
@@ -13,6 +13,9 @@ export default function DashboardLayout({
 }) {
   const sesaun = useSesaun();
   const router = useRouter();
+  // The drawer state lives here because the button that opens it is in the
+  // topbar and the drawer it opens is the sidebar, siblings either way.
+  const [menu, setMenu] = useState(false);
 
   // Only an explicit null means signed out. `undefined` is the hydration
   // render, which has no localStorage to read — treating that as signed out
@@ -27,9 +30,9 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar />
+      <Sidebar abertu={menu} onClose={() => setMenu(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar />
+        <Topbar onMenu={() => setMenu(true)} />
         <main className="px-[26px] pt-[6px] pb-10">{children}</main>
       </div>
     </div>
