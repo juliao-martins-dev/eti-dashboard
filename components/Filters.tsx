@@ -3,13 +3,20 @@
 import type { ReactNode } from "react";
 import { Seg } from "@/components/ui/Seg";
 import { FULAN_NARAN } from "@/lib/format";
-import { fulanLista, SEMANA_LISTA, type Filtru, type Periodu } from "@/lib/periodu";
+import {
+  FULAN_LISTA,
+  SEMANA_LISTA,
+  tinanLista,
+  type Filtru,
+  type Periodu,
+} from "@/lib/periodu";
 import { useProfesor } from "@/lib/store";
 
 const PERIODU_NARAN: Record<Periodu, string> = {
   loron: "Loron",
   semana: "Semana",
   fulan: "Fulan",
+  tinan: "Tinan",
 };
 
 /**
@@ -31,7 +38,9 @@ export function Filters({
 }) {
   const { profesor } = useProfesor();
   const set = (parte: Partial<Filtru>) => onChange({ ...value, ...parte });
-  const fulan = fulanLista(new Date(value.tinan, value.fulan - 1, 1));
+  // Anchored on the filter's own year so the list never drops the year that
+  // is currently selected.
+  const tinan = tinanLista(Math.max(value.tinan, new Date().getFullYear()));
 
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2 [&_input]:w-auto [&_select]:w-auto">
@@ -66,18 +75,29 @@ export function Filters({
         />
       ) : null}
 
+      {value.per !== "loron" ? (
+        <select
+          aria-label="Tinan"
+          value={value.tinan}
+          onChange={(e) => set({ tinan: Number(e.target.value) })}
+        >
+          {tinan.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      ) : null}
+
       {value.per === "fulan" || value.per === "semana" ? (
         <select
           aria-label="Fulan"
-          value={`${value.tinan}-${value.fulan}`}
-          onChange={(e) => {
-            const [tinan, f] = e.target.value.split("-").map(Number);
-            set({ tinan, fulan: f });
-          }}
+          value={value.fulan}
+          onChange={(e) => set({ fulan: Number(e.target.value) })}
         >
-          {fulan.map((f) => (
-            <option key={`${f.tinan}-${f.fulan}`} value={`${f.tinan}-${f.fulan}`}>
-              {FULAN_NARAN[f.fulan]} {f.tinan}
+          {FULAN_LISTA.map((f) => (
+            <option key={f} value={f}>
+              {FULAN_NARAN[f]}
             </option>
           ))}
         </select>
