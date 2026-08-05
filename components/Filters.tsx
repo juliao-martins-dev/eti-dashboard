@@ -3,9 +3,8 @@
 import type { ReactNode } from "react";
 import { Seg } from "@/components/ui/Seg";
 import { FULAN_NARAN } from "@/lib/format";
-import { TINAN } from "@/lib/mock-data";
-import { FULAN_LISTA, SEMANA_LISTA, type Filtru, type Periodu } from "@/lib/periodu";
-import { useDadus } from "@/lib/store";
+import { fulanLista, SEMANA_LISTA, type Filtru, type Periodu } from "@/lib/periodu";
+import { useProfesor } from "@/lib/store";
 
 const PERIODU_NARAN: Record<Periodu, string> = {
   loron: "Loron",
@@ -30,8 +29,9 @@ export function Filters({
   periodus?: readonly Periodu[];
   children?: ReactNode;
 }) {
-  const { profesor } = useDadus();
+  const { profesor } = useProfesor();
   const set = (parte: Partial<Filtru>) => onChange({ ...value, ...parte });
+  const fulan = fulanLista(new Date(value.tinan, value.fulan - 1, 1));
 
   return (
     <div className="mb-3 flex flex-wrap items-center gap-2 [&_input]:w-auto [&_select]:w-auto">
@@ -69,12 +69,15 @@ export function Filters({
       {value.per === "fulan" || value.per === "semana" ? (
         <select
           aria-label="Fulan"
-          value={value.fulan}
-          onChange={(e) => set({ fulan: Number(e.target.value) })}
+          value={`${value.tinan}-${value.fulan}`}
+          onChange={(e) => {
+            const [tinan, f] = e.target.value.split("-").map(Number);
+            set({ tinan, fulan: f });
+          }}
         >
-          {FULAN_LISTA.map((f) => (
-            <option key={f} value={f}>
-              {FULAN_NARAN[f]} {TINAN}
+          {fulan.map((f) => (
+            <option key={`${f.tinan}-${f.fulan}`} value={`${f.tinan}-${f.fulan}`}>
+              {FULAN_NARAN[f.fulan]} {f.tinan}
             </option>
           ))}
         </select>
