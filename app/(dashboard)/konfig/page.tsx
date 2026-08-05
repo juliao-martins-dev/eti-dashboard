@@ -6,7 +6,7 @@ import { Field } from "@/components/ui/Field";
 import { Grid2, Panel, PanelTitle } from "@/components/ui/Panel";
 import { Seg } from "@/components/ui/Seg";
 import { useToast } from "@/components/ui/Toast";
-import { apiBase } from "@/lib/api";
+import { apiAlternativa, setApiBase, useApiBase } from "@/lib/api";
 import { cx } from "@/lib/cx";
 import { oras } from "@/lib/format";
 import { useKonfig } from "@/lib/prezensa";
@@ -21,6 +21,9 @@ export default function KonfigPage() {
   const toast = useToast();
   const { accent, modu } = useTema();
   const { dadus: konfig, karega, erru } = useKonfig();
+  const base = useApiBase();
+  // Empty until hydration, so no swap is offered against the wrong base.
+  const outru = base ? apiAlternativa() : null;
 
   return (
     <Grid2>
@@ -107,7 +110,22 @@ export default function KonfigPage() {
                 </b>
               </Kv>
               <Kv naran="Servidor API">
-                <b className="font-mono text-[12px]">{apiBase()}</b>
+                <span className="flex items-center gap-2">
+                  <b className="font-mono text-[12px]">{base}</b>
+                  {outru ? (
+                    <button
+                      type="button"
+                      title={`Troka ba ${outru}`}
+                      onClick={() => {
+                        setApiBase(outru);
+                        location.reload();
+                      }}
+                      className="rounded-[6px] border border-border px-2 py-[2px] text-[11px] font-medium text-muted hover:border-accent hover:text-accent"
+                    >
+                      Troka
+                    </button>
+                  ) : null}
+                </span>
               </Kv>
             </>
           )}
