@@ -54,8 +54,13 @@ function getSnapshot(): User | null {
   return snapshot;
 }
 
-/** The server cannot read localStorage, so it renders as signed out. */
-const getServerSnapshot = (): User | null => null;
+/**
+ * `undefined`, not `null` — "not read yet" is a different thing from "signed
+ * out", and conflating them is what made a refresh bounce through /login: the
+ * hydration render has no localStorage, and a guard reading `null` there would
+ * throw out a perfectly good session before React swaps in the real snapshot.
+ */
+const getServerSnapshot = (): User | null | undefined => undefined;
 
 function publika(perfil: User | null) {
   adotadu = true;
@@ -132,6 +137,14 @@ export async function atualizaFoto(foto: File): Promise<User> {
   return perfil;
 }
 
-export function useSesaun(): User | null {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+/**
+ * The signed-in profile, `null` when signed out, `undefined` until the browser
+ * has been read. Guards must only act on an explicit `null`.
+ */
+export function useSesaun(): User | null | undefined {
+  return useSyncExternalStore<User | null | undefined>(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
 }
