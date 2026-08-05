@@ -1,5 +1,6 @@
 "use client";
 
+import { ESKOLA, naranFile, selu, TITULU } from "./export-comun";
 import { dataDate, LORON_API } from "./format";
 import {
   selaAsinatura,
@@ -12,36 +13,11 @@ import {
 /**
  * The attendance book as a PDF — one page per teacher, laid out like the
  * printed "LISTA PREZENSA BA PROFESÓR/A ETI DILI" sheet it replaces.
+ * lib/export-excel.ts mirrors this page for page.
  *
  * jsPDF is loaded on demand: it is far larger than the rest of the dashboard
  * and only an admin pressing Download ever needs it.
  */
-
-const ESKOLA = {
-  naran: "ESCOLA TÉCNICA DE INFORMÁTICA DILI",
-  sigla: "(ETI-DÍLI)",
-  moradaː: "Rua: Fomento II, Aldeia são José, Comoro, Dom Aleixoun, Díli-Timor-Leste.",
-  kontaktu:
-    "https://estvetidili.website.com/eti-tl   ·   estvetidili.tl@gmail.com   ·   +670 78118019 / 76377110",
-} as const;
-
-/** The seal, as a data URI so jsPDF can embed it without a network hop. */
-async function selu(): Promise<string | null> {
-  try {
-    const r = await fetch("/icon.png");
-    if (!r.ok) return null;
-    const blob = await r.blob();
-    return await new Promise<string>((resolve, reject) => {
-      const fr = new FileReader();
-      fr.onload = () => resolve(String(fr.result));
-      fr.onerror = () => reject(new Error("foto"));
-      fr.readAsDataURL(blob);
-    });
-  } catch {
-    // The sheet is still valid without the logo.
-    return null;
-  }
-}
 
 export async function exportaPdf(rel: Relatoriu, naranFile: string): Promise<void> {
   const [{ jsPDF }, { default: autoTable }] = await Promise.all([
@@ -156,7 +132,7 @@ function kabesalyu(
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
-  doc.text(ESKOLA.moradaː, largura / 2, 22.5, { align: "center" });
+  doc.text(ESKOLA.morada, largura / 2, 22.5, { align: "center" });
   doc.text(ESKOLA.kontaktu, largura / 2, 26, { align: "center" });
 
   doc.setLineWidth(0.5);
@@ -166,12 +142,9 @@ function kabesalyu(
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9.5);
-  doc.text(
-    `LISTA PREZENSA BA PROFESÓR/A ETI DILI — ${periodu.toUpperCase()}`,
-    largura / 2,
-    34,
-    { align: "center" },
-  );
+  doc.text(`${TITULU} — ${periodu.toUpperCase()}`, largura / 2, 34, {
+    align: "center",
+  });
 
   doc.setFontSize(9);
   doc.text("Naran :", 11, 40);
@@ -194,8 +167,6 @@ function rodape(doc: import("jspdf").jsPDF) {
   }
 }
 
-/** `lista-prezensa-hotu-jullu-2026.pdf` */
-export function naranFilePdf(periodu: string, who: string): string {
-  const p = periodu.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return `lista-prezensa-${who}-${p}.pdf`;
-}
+/** `lista-prezensa-hotu-agostu-2026.pdf` */
+export const naranFilePdf = (periodu: string, who: string) =>
+  naranFile(periodu, who, "pdf");
