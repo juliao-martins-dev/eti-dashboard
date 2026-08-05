@@ -116,6 +116,22 @@ export async function karegaPerfil(): Promise<void> {
   publika(perfil);
 }
 
+/**
+ * Replace the signed-in administrator's own photo.
+ *
+ * `PATCH /api/auth/me/` is multipart and takes `foto` and nothing else — the
+ * serializer is deliberately not partial, so the file *is* the request — and
+ * answers with the whole profile, which is what refreshes the sidebar.
+ * Uploading also deletes the previous file server-side.
+ */
+export async function atualizaFoto(foto: File): Promise<User> {
+  const corpo = new FormData();
+  corpo.append("foto", foto);
+  const perfil = await api<User>("/auth/me/", { method: "PATCH", body: corpo });
+  publika(perfil);
+  return perfil;
+}
+
 export function useSesaun(): User | null {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
