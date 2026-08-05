@@ -1,4 +1,4 @@
-import type { Data, Kolumna, Oras } from "./types";
+import type { Data, Kolumna, Marka, Oras, Prezensa } from "./types";
 
 /** `fulan_display` as eti-api spells it (`attendance.Fulan`), 1-indexed. */
 export const FULAN_NARAN = [
@@ -97,3 +97,10 @@ export const semanaHusi = (d: Date): number => {
   const inisiuFulan = (new Date(d.getFullYear(), d.getMonth(), 1).getDay() + 6) % 7;
   return Math.floor((d.getDate() + inisiuFulan - 1) / 7) + 1;
 };
+
+/** The punch that filled one column of a day, if it was ever made. */
+export const markaBa = (
+  prezensa: Prezensa | null | undefined,
+  kolumna: Kolumna,
+): Marka | null => prezensa?.marka.find((m) => m.kolumna === kolumna) ?? null;
+
