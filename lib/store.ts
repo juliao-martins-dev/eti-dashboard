@@ -1,109 +1,30 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { dataDate, iso } from "./format";
-import {
-  kriaPrezensaEstadu,
-  PROFESOR_HOTU,
-  profesorKurtu,
-  REJISTU_HOTU,
-} from "./mock-data";
-import type { Data, Estadu, PrezensaProfesor, Sexu, User } from "./types";
+import { useEffect, useSyncExternalStore } from "react";
+import { api, mensajenErru } from "./api";
+import type { ProfesorFoun, ProfesorKriadu, ProfesorPatch, User } from "./types";
 
 /**
- * The client-side stand-in for the API, shared by every route so a teacher
- * added on Profesór shows up in the Prezensa filter and a lisensa registered
- * on Prezensa is still there on Relatóriu — the way the prototype's shared
- * `T` and `REC` behaved.
+ * The teacher roster, `GET /api/profesor/`.
  *
- * It is a module store read through useSyncExternalStore rather than a
- * context: the saved data lives in localStorage, which the server cannot see,
- * and that is exactly the server/client snapshot split this hook exists for.
+ * It is a module store rather than a per-component fetch because three
+ * screens need the same list at once — the Profesór table, the teacher
+ * `<select>` in the toolbars, and Painel's join for `nu_kontaktu`, which
+ * `ohin-hotu` does not carry. One request, one copy, and a mutation anywhere
+ * refreshes all of them.
  */
 
-export const DADUS_KEY = "eti.dadus";
-
-export interface LisensaFoun {
-  profesor_id: number;
-  estadu: Estadu;
-  husi: Data;
-  toO: Data;
-  obs: string;
-}
-
-export interface ProfesorFoun {
-  naran_kompletu: string;
-  numeru_id: number;
-  email: string;
-  kargu: string;
-  nu_kontaktu: string;
-  sexu: Sexu;
-  is_active?: boolean;
-}
-
-export interface Dadus {
+export interface EstaduRoster {
   profesor: User[];
-  rejistu: PrezensaProfesor[];
+  karega: boolean;
+  erru: string | null;
 }
 
-/** `${profesor_id}|${data}` -> the day as written by hand, or null if removed. */
-type Override = Record<string, PrezensaProfesor | null>;
+const VAZIU: EstaduRoster = { profesor: [], karega: true, erru: null };
 
-interface Rai {
-  profesor: User[];
-  override: Override;
-}
-
-export const kunut = (profesorId: number, data: Data) => `${profesorId}|${data}`;
-
-const SEED: Dadus = { profesor: PROFESOR_HOTU, rejistu: REJISTU_HOTU };
-
-let profesor: User[] = PROFESOR_HOTU;
-let override: Override = {};
-let snapshot: Dadus = SEED;
-let adotadu = false;
+let snapshot: EstaduRoster = VAZIU;
+let pedidu: Promise<void> | null = null;
 let listeners: Array<() => void> = [];
-
-/**
- * Only the differences are persisted, never the 238 generated rows: a day the
- * administration touched, plus the teacher list. Everything else is rebuilt
- * from the seed, so regenerating the mock does not leave stale copies behind.
- */
-function konstrui(): Dadus {
-  const tokadu = new Set(Object.keys(override));
-  const base = REJISTU_HOTU.filter(
-    (r) => !r.prezensa || !tokadu.has(kunut(r.profesor.id, r.prezensa.data)),
-  );
-  const foun = Object.values(override).filter(
-    (r): r is PrezensaProfesor => r !== null,
-  );
-  return { profesor, rejistu: [...base, ...foun] };
-}
-
-function rai() {
-  try {
-    const dadus: Rai = { profesor, override };
-    localStorage.setItem(DADUS_KEY, JSON.stringify(dadus));
-  } catch {
-    // Private mode or a full quota; the session still works, it just forgets.
-  }
-}
-
-function karega(): Dadus {
-  try {
-    const raw = localStorage.getItem(DADUS_KEY);
-    if (raw) {
-      const dadus = JSON.parse(raw) as Rai;
-      if (Array.isArray(dadus.profesor)) profesor = dadus.profesor;
-      if (dadus.override && typeof dadus.override === "object") {
-        override = dadus.override;
-      }
-    }
-  } catch {
-    // Corrupt or unavailable — fall through to the seed rather than break.
-  }
-  return konstrui();
-}
 
 function subscribe(l: () => void) {
   listeners = [...listeners, l];
@@ -112,96 +33,63 @@ function subscribe(l: () => void) {
   };
 }
 
-function getSnapshot(): Dadus {
-  if (!adotadu) {
-    adotadu = true;
-    snapshot = karega();
-  }
-  return snapshot;
-}
+const getSnapshot = (): EstaduRoster => snapshot;
+const getServerSnapshot = (): EstaduRoster => VAZIU;
 
-/** The server has no localStorage, so it renders the seed and the hook
- *  re-renders once hydration is done. */
-const getServerSnapshot = (): Dadus => SEED;
-
-function publika() {
-  snapshot = konstrui();
-  rai();
+function publika(foun: EstaduRoster) {
+  snapshot = foun;
   for (const l of listeners) l();
 }
 
-export function useDadus(): Dadus {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+/** Single-flight: several screens mounting at once share one request. */
+export function karegaProfesor(forsa = false): Promise<void> {
+  if (pedidu && !forsa) return pedidu;
+
+  pedidu = api<User[]>("/profesor/")
+    .then((lista) => publika({ profesor: lista, karega: false, erru: null }))
+    .catch((e: unknown) =>
+      publika({ profesor: [], karega: false, erru: mensajenErru(e) }),
+    )
+    .finally(() => {
+      pedidu = null;
+    });
+
+  return pedidu;
 }
 
-export function aumentaProfesor(dadus: ProfesorFoun) {
-  getSnapshot();
-  // Max + 1, not length + 1: a deleted teacher would otherwise hand out an id
-  // that is already taken.
-  const id = profesor.reduce((m, p) => Math.max(m, p.id), 0) + 1;
-  profesor = [
-    ...profesor,
-    {
-      ...dadus,
-      id,
-      foto: null,
-      role: "PROFESSOR",
-      role_display: "Professór",
-      is_active: dadus.is_active ?? true,
-    },
-  ];
-  publika();
-}
+export function useProfesor(): EstaduRoster {
+  const estadu = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-export function atualizaProfesor(id: number, dadus: Partial<ProfesorFoun>) {
-  getSnapshot();
-  profesor = profesor.map((p) => (p.id === id ? { ...p, ...dadus } : p));
-  publika();
-}
+  useEffect(() => {
+    // Fetch once on the first mount anywhere; later mounts reuse the store.
+    if (snapshot === VAZIU) void karegaProfesor();
+  }, []);
 
-export function rejistuLisensa(lisensa: LisensaFoun) {
-  getSnapshot();
-  const dona = profesor.find((p) => p.id === lisensa.profesor_id);
-  if (!dona) return;
-
-  const foun: Override = { ...override };
-  for (
-    let d = dataDate(lisensa.husi);
-    iso(d) <= lisensa.toO;
-    d.setDate(d.getDate() + 1)
-  ) {
-    // Sunday is not a day on the sheet.
-    if (d.getDay() === 0) continue;
-    const data = iso(d);
-    foun[kunut(dona.id, data)] = {
-      profesor: profesorKurtu(dona),
-      prezensa: kriaPrezensaEstadu(dona, data, lisensa.estadu, lisensa.obs),
-      marka_ona: false,
-    };
-  }
-  override = foun;
-  publika();
+  return estadu;
 }
 
 /**
- * Drop a day the administration wrote by hand; it goes back to having no
- * record at all. The punches it replaced are not restored — they were never
- * kept, which is also what the prototype did when a lisensa overwrote a day.
+ * Returns the created row including `password_inisial` — shown once and then
+ * unrecoverable, since the server only keeps the hash.
  */
-export function hasaiPrezensa(profesorId: number, data: Data) {
-  getSnapshot();
-  override = { ...override, [kunut(profesorId, data)]: null };
-  publika();
+export async function aumentaProfesor(dadus: ProfesorFoun): Promise<ProfesorKriadu> {
+  const kriadu = await api<ProfesorKriadu>("/profesor/", {
+    method: "POST",
+    body: JSON.stringify(dadus),
+  });
+  await karegaProfesor(true);
+  return kriadu;
 }
 
-export function hamoosDadus() {
-  adotadu = true;
-  profesor = PROFESOR_HOTU;
-  override = {};
-  try {
-    localStorage.removeItem(DADUS_KEY);
-  } catch {
-    // Nothing to clear if storage was never available.
-  }
-  publika();
+/** Deactivation is `{is_active: false}` — there is no DELETE, sheets refer to the account. */
+export async function atualizaProfesor(
+  id: number,
+  dadus: ProfesorPatch,
+): Promise<User> {
+  const foun = await api<User>(`/profesor/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify(dadus),
+  });
+  await karegaProfesor(true);
+  return foun;
 }
