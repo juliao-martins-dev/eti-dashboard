@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { IconMenu } from "@/components/icons";
 import { dataKompletu } from "@/lib/format";
 import { useOhin } from "@/lib/ohin";
 
@@ -12,16 +13,27 @@ const TITULU: Record<string, [string, string]> = {
   "/konfig": ["Konfigurasaun", "Aparénsia no informasaun sistema"],
 };
 
-export function Topbar() {
+export function Topbar({ onMenu }: { onMenu?: () => void }) {
   const pathname = usePathname();
   const [titulu, sub] = TITULU[pathname] ?? TITULU["/"];
   const ohin = useOhin();
 
   return (
     <header className="flex items-end justify-between gap-3 px-[26px] pt-5 pb-[14px]">
-      <div>
-        <h1 className="text-[19px] font-bold">{titulu}</h1>
-        <p className="mt-[2px] text-[12.5px] text-muted">{sub}</p>
+      <div className="flex min-w-0 items-center gap-3">
+        {/* `md:hidden` means the desktop header keeps exactly its old boxes. */}
+        <button
+          type="button"
+          onClick={onMenu}
+          aria-label="Loke menu"
+          className="-ml-1 shrink-0 rounded-[8px] p-[6px] text-muted hover:bg-bg hover:text-text md:hidden"
+        >
+          <IconMenu className="h-5 w-5" />
+        </button>
+        <div className="min-w-0">
+          <h1 className="truncate text-[19px] font-bold">{titulu}</h1>
+          <p className="mt-[2px] truncate text-[12.5px] text-muted">{sub}</p>
+        </div>
       </div>
       <div className="text-right text-[12.5px] text-muted">
         Ohin loron
