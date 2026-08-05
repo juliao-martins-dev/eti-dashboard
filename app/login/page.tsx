@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { BackgroundSlideshow } from "@/components/BackgroundSlideshow";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { login, useSesaun } from "@/lib/auth";
@@ -34,18 +35,9 @@ export default function LoginPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-5">
-      {/* The school seal, large and faint behind the card. */}
-      <Image
-        src="/eti.jpg"
-        alt=""
-        aria-hidden="true"
-        width={640}
-        height={640}
-        priority
-        className="pointer-events-none absolute -right-32 -bottom-32 w-[620px] max-w-none opacity-[0.05] select-none"
-      />
+      <BackgroundSlideshow />
 
-      <div className="relative w-full max-w-[380px] rounded-card border border-border bg-surface p-7">
+      <div className="relative z-10 w-full max-w-[380px] rounded-card border border-border bg-surface p-7">
         <div className="flex flex-col items-center text-center">
           <Image
             src="/icon.png"
