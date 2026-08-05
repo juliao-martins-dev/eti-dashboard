@@ -150,6 +150,73 @@ export interface PrezensaProfesor {
   marka_ona: boolean;
 }
 
+/**
+ * One line of `GET /api/prezensa/hotu/`. The calendar day sits at the top
+ * level because an unmarked day has `prezensa: null` and the date would have
+ * nowhere else to live.
+ */
+export interface PrezensaProfesorLoron extends PrezensaProfesor {
+  data: Data;
+}
+
+/** `GET /api/prezensa/hotu/` — echoes back whichever period it was asked for. */
+export interface HotuResposta {
+  data?: Data;
+  loron?: string;
+  fulan?: number;
+  tinan?: number;
+  semana?: number | null;
+  profesor: PrezensaProfesorLoron[];
+}
+
+/** `POST /api/prezensa/estadu/` payload — `too` is Tetun `to'o`, kept ASCII. */
+export interface EstaduRejistu {
+  profesor: number;
+  estadu: Estadu;
+  husi: Data;
+  too: Data;
+  obs: string;
+}
+
+/** `201` from the same call. */
+export interface EstaduRejistuResposta {
+  detail: string;
+  profesor: number;
+  estadu: Estadu;
+  husi: Data;
+  too: Data;
+  loron: Data[];
+  total: number;
+}
+
+/** `GET /api/konfig/` — the schedule and geofence, read-only. */
+export interface KonfigSistema {
+  oras_dader_tama: Oras;
+  oras_dader_fila: Oras;
+  oras_lorokraik_tama: Oras;
+  oras_lorokraik_fila: Oras;
+  limite_sesaun: Oras;
+  eskola_raiu_metru: number;
+  eskola_obriga_fatin: boolean;
+}
+
+/** `POST /api/profesor/` body; `PATCH` takes any subset plus `is_active`. */
+export interface ProfesorFoun {
+  numeru_id: number;
+  naran_kompletu: string;
+  email: string;
+  kargu?: string;
+  nu_kontaktu?: string;
+  sexu?: Sexu;
+}
+
+export type ProfesorPatch = Partial<ProfesorFoun> & { is_active?: boolean };
+
+/** The 201 from `POST /api/profesor/`: a roster row plus a one-time password. */
+export interface ProfesorKriadu extends User {
+  password_inisial: string;
+}
+
 export interface OhinHotuRezumu {
   total: number;
   marka_ona: number;
