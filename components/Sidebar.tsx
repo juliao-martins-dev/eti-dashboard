@@ -12,8 +12,8 @@ import {
   IconRelatoriu,
 } from "@/components/icons";
 import { useToast } from "@/components/ui/Toast";
+import { useSesaun } from "@/lib/auth";
 import { cx } from "@/lib/cx";
-import { ADMIN } from "@/lib/mock-data";
 
 // Konfigurasaun is deliberately absent: it lives in the admin chip menu at the
 // foot of the sidebar, next to logout, rather than beside the daily screens.
@@ -92,6 +92,7 @@ export function Sidebar() {
 function UserChip() {
   const router = useRouter();
   const toast = useToast();
+  const sesaun = useSesaun();
   const [abertu, setAbertu] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -114,14 +115,21 @@ function UserChip() {
   const item =
     "w-full rounded-[6px] px-[10px] py-[7px] text-left text-[12.5px] font-medium text-muted hover:bg-bg hover:text-text";
 
+  // The profile cached at login; the guard sends you to /login without one.
+  const naran = sesaun?.naran_kompletu ?? "…";
+
   return (
     <div ref={ref} className="relative border-t border-border p-3">
       {abertu ? (
         <div className="absolute bottom-full left-3 z-40 mb-1 w-[calc(100%-24px)] animate-pop rounded-[10px] border border-border bg-surface p-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
           <div className="border-b border-border px-[10px] pt-[7px] pb-2">
-            <b className="block text-[12.5px]">{ADMIN.naran_kompletu}</b>
-            <small className="block text-[11px] text-muted">{ADMIN.email}</small>
-            <small className="block text-[11px] text-muted">{ADMIN.kargu}</small>
+            <b className="block text-[12.5px]">{naran}</b>
+            <small className="block truncate text-[11px] text-muted">
+              {sesaun?.email}
+            </small>
+            {sesaun?.kargu ? (
+              <small className="block text-[11px] text-muted">{sesaun.kargu}</small>
+            ) : null}
           </div>
           <button
             type="button"
@@ -138,8 +146,8 @@ function UserChip() {
             className={item}
             onClick={() => {
               setAbertu(false);
-              logout();
-              router.replace("/login");
+              // Blacklists the refresh token server-side, then clears locally.
+              void logout().then(() => router.replace("/login"));
               toast("Sai husi sistema ✓");
             }}
           >
@@ -155,13 +163,13 @@ function UserChip() {
         onClick={() => setAbertu((a) => !a)}
         className="flex w-full items-center gap-[9px] rounded-[8px] p-1 text-left hover:bg-bg"
       >
-        <div className="flex h-[30px] w-[30px] items-center justify-center rounded-full bg-accent font-brand text-[12px] font-semibold text-white">
-          {inisiais(ADMIN.naran_kompletu)}
+        <div className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-accent font-brand text-[12px] font-semibold text-white">
+          {inisiais(naran)}
         </div>
-        <div>
-          <b className="text-[12.5px]">{ADMIN.naran_kompletu}</b>
+        <div className="min-w-0">
+          <b className="block truncate text-[12.5px]">{naran}</b>
           <small className="block text-[11px] text-muted">
-            {ADMIN.role} · ETI-Dili
+            {sesaun?.role_display ?? sesaun?.role ?? "ADMIN"} · ETI-Dili
           </small>
         </div>
       </button>
