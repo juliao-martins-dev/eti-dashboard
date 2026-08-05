@@ -16,7 +16,8 @@ import { Field, Hint, Row2 } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { Panel } from "@/components/ui/Panel";
 import { useToast } from "@/components/ui/Toast";
-import { aumentaProfesor, atualizaProfesor, useDadus } from "@/lib/store";
+import { mensajenErru } from "@/lib/api";
+import { aumentaProfesor, atualizaProfesor, useProfesor } from "@/lib/store";
 import type { Sexu, User } from "@/lib/types";
 
 interface Form {
@@ -42,10 +43,13 @@ type Alvu = null | "foun" | User;
 
 export default function ProfesorPage() {
   const toast = useToast();
-  const { profesor } = useDadus();
+  const { profesor, karega, erru } = useProfesor();
   const [buka, setBuka] = useState("");
   const [alvu, setAlvu] = useState<Alvu>(null);
   const [form, setForm] = useState<Form>(FORM_VAZIU);
+  const [haruka, setHaruka] = useState(false);
+  /** The one-time password from a 201; the server keeps only its hash. */
+  const [senha, setSenha] = useState<{ naran: string; password: string } | null>(null);
 
   const lista = useMemo(() => {
     const q = buka.trim().toLowerCase();
@@ -64,14 +68,14 @@ export default function ProfesorPage() {
             numeru_id: String(a.numeru_id),
             sexu: a.sexu === "MANE" ? "MANE" : "FETO",
             email: a.email,
-            kargu: a.kargu,
+            kargu: a.kargu ?? "",
             nu_kontaktu: a.nu_kontaktu ?? "",
           },
     );
     setAlvu(a);
   }
 
-  function salva() {
+  async function salva() {
     const naran = form.naran_kompletu.trim();
     const numeru = Number(form.numeru_id);
     const email = form.email.trim();
@@ -81,51 +85,53 @@ export default function ProfesorPage() {
       return;
     }
 
-    // The API enforces both as unique (accounts.User); mirror it here so the
-    // mock never holds a state the server would refuse.
-    const sasan = profesor.find(
-      (p) =>
-        (alvu === "foun" || p.id !== (alvu as User).id) &&
-        (p.numeru_id === numeru || p.email.toLowerCase() === email.toLowerCase()),
-    );
-    if (sasan) {
-      toast(
-        sasan.numeru_id === numeru
-          ? `Numeru ID ${numeru} uza tiha ona husi ${sasan.naran_kompletu}`
-          : `Email ne'e uza tiha ona husi ${sasan.naran_kompletu}`,
-      );
-      return;
-    }
-
     const dadus = {
       numeru_id: numeru,
       naran_kompletu: naran,
       email,
-      kargu: form.kargu.trim() || "Profesór/a",
-      nu_kontaktu: form.nu_kontaktu.trim() || "—",
+      kargu: form.kargu.trim(),
+      nu_kontaktu: form.nu_kontaktu.trim(),
       sexu: form.sexu,
     };
 
-    if (alvu === "foun") {
-      // The store only, for now — creating the account is a POST that eti-api
-      // does not expose yet.
-      aumentaProfesor(dadus);
-      toast("Konta profesór kria ona ✓");
-    } else if (alvu) {
-      atualizaProfesor(alvu.id, dadus);
-      toast("Dadus profesór atualiza ona ✓");
+    setHaruka(true);
+    try {
+      if (alvu === "foun") {
+        const kriadu = await aumentaProfesor(dadus);
+        // Straight into the hand-over: closing without reading the password
+        // means it is gone for good.
+        setSenha({ naran: kriadu.naran_kompletu, password: kriadu.password_inisial });
+        setAlvu(null);
+      } else if (alvu) {
+        await atualizaProfesor(alvu.id, dadus);
+        setAlvu(null);
+        toast("Dadus profesór atualiza ona ✓");
+      }
+    } catch (e) {
+      // duplicate_numeru / duplicate_email arrive with a Tetun `detail` that
+      // already says which column clashed, so it is shown as-is.
+      toast(mensajenErru(e));
+    } finally {
+      setHaruka(false);
     }
-    setAlvu(null);
   }
 
-  function trokaAtivu(p: User) {
-    atualizaProfesor(p.id, { is_active: !(p.is_active ?? true) });
-    toast(
-      p.is_active ?? true
-        ? `Konta ${p.naran_kompletu} dezativa ona`
-        : `Konta ${p.naran_kompletu} ativa fila fali ✓`,
-    );
-    setAlvu(null);
+  async function trokaAtivu(p: User) {
+    const ativu = p.is_active ?? true;
+    setHaruka(true);
+    try {
+      await atualizaProfesor(p.id, { is_active: !ativu });
+      setAlvu(null);
+      toast(
+        ativu
+          ? `Konta ${p.naran_kompletu} dezativa ona`
+          : `Konta ${p.naran_kompletu} ativa fila fali ✓`,
+      );
+    } catch (e) {
+      toast(mensajenErru(e));
+    } finally {
+      setHaruka(false);
+    }
   }
 
   const edita = alvu !== null && alvu !== "foun";
@@ -162,7 +168,11 @@ export default function ProfesorPage() {
             </tr>
           </thead>
           <tbody>
-            {lista.length ? (
+            {erru ? (
+              <EmptyRow colSpan={5}>{erru}</EmptyRow>
+            ) : karega ? (
+              <EmptyRow colSpan={5}>Karega dadus…</EmptyRow>
+            ) : lista.length ? (
               lista.map((p) => {
                 const ativu = p.is_active ?? true;
                 return (
@@ -171,8 +181,8 @@ export default function ProfesorPage() {
                       <NameCell naran={p.naran_kompletu} sub={p.email} />
                     </Td>
                     <Td className="font-mono">{p.numeru_id}</Td>
-                    <Td>{p.kargu}</Td>
-                    <Td className="font-mono text-muted">{p.nu_kontaktu}</Td>
+                    <Td>{p.kargu || "—"}</Td>
+                    <Td className="font-mono text-muted">{p.nu_kontaktu || "—"}</Td>
                     <Td>
                       <Badge tone={ativu ? "ok" : "muted"}>
                         {ativu ? "Ativu" : "Dezativadu"}
@@ -203,6 +213,7 @@ export default function ProfesorPage() {
               <Button
                 variant="ghost"
                 className="mr-auto"
+                disabled={haruka}
                 onClick={() => trokaAtivu(alvu as User)}
               >
                 {((alvu as User).is_active ?? true)
@@ -210,10 +221,12 @@ export default function ProfesorPage() {
                   : "Ativa fila fali"}
               </Button>
             ) : null}
-            <Button variant="ghost" onClick={() => setAlvu(null)}>
+            <Button variant="ghost" disabled={haruka} onClick={() => setAlvu(null)}>
               Kansela
             </Button>
-            <Button onClick={salva}>{edita ? "Rai mudansa" : "Kria konta"}</Button>
+            <Button disabled={haruka} onClick={salva}>
+              {haruka ? "Haruka…" : edita ? "Rai mudansa" : "Kria konta"}
+            </Button>
           </>
         }
       >
@@ -279,11 +292,46 @@ export default function ProfesorPage() {
 
         {edita ? null : (
           <Hint>
-            Sistema sei kria password inisiál no haruka ba email. Profesór uza email +
-            password ne&apos;e atu login iha aplikasaun móvel, hodi marka{" "}
-            <b>check-in</b> no <b>check-out</b>.
+            Sistema sei kria password inisiál. Haruka email seidauk funsiona, tan
+            ne&apos;e password sei hatudu dala ida de&apos;it iha ekrán — kopia no
+            entrega ba profesór hodi login iha aplikasaun móvel.
           </Hint>
         )}
+      </Modal>
+
+      <Modal
+        open={senha !== null}
+        onClose={() => setSenha(null)}
+        title="Konta kria ona ✓"
+        subtitle={senha ? `Password inisiál ba ${senha.naran}` : undefined}
+        footer={
+          <Button
+            onClick={() => {
+              setSenha(null);
+              toast("Konta profesór kria ona ✓");
+            }}
+          >
+            Hotu
+          </Button>
+        }
+      >
+        <div className="flex items-center gap-2">
+          <input readOnly value={senha?.password ?? ""} className="font-mono" />
+          <Button
+            variant="ghost"
+            onClick={() => {
+              if (!senha) return;
+              void navigator.clipboard?.writeText(senha.password);
+              toast("Password kopia ona");
+            }}
+          >
+            Kopia
+          </Button>
+        </div>
+        <Hint>
+          Password ne&apos;e sei la aparese fali. Servidor rai de&apos;it nia hash,
+          no la iha endpoint atu rekupera — se lakon, presiza kria konta foun.
+        </Hint>
       </Modal>
     </>
   );
