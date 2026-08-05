@@ -135,7 +135,10 @@ export async function api<T>(path: string, opsaun: ApiOpsaun = {}): Promise<T> {
 
   const manda = (token: string | null) => {
     const headers = new Headers(rest.headers);
-    if (rest.body && !headers.has("Content-Type")) {
+    // FormData must set its own Content-Type: the boundary is generated with
+    // the body, and naming the type here would strip it and break the upload.
+    const multipart = typeof FormData !== "undefined" && rest.body instanceof FormData;
+    if (rest.body && !multipart && !headers.has("Content-Type")) {
       headers.set("Content-Type", "application/json");
     }
     if (token) headers.set("Authorization", `Bearer ${token}`);
