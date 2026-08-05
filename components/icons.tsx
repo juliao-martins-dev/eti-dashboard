@@ -61,6 +61,14 @@ export function IconKonfigurasaun({ className }: IconProps) {
   );
 }
 
+export function IconMenu({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M3 6h18M3 12h18M3 18h18" />
+    </svg>
+  );
+}
+
 export function IconBuka({ className }: IconProps) {
   return (
     <svg {...base} className={className} aria-hidden="true">
