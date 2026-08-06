@@ -9,6 +9,9 @@ import { Field } from "@/components/ui/Field";
 import { ApiErru, mensajenErru } from "@/lib/api";
 import { login, useSesaun } from "@/lib/auth";
 
+import { TailSpin } from 'react-loader-spinner'
+import { cx } from "@/lib/cx";
+
 export default function LoginPage() {
   const router = useRouter();
   const sesaun = useSesaun();
@@ -112,8 +115,20 @@ export default function LoginPage() {
             </p>
           ) : null}
 
-          <Button type="submit" disabled={haruka} className="mt-1 justify-center">
-            {haruka ? "Tama…" : "Tama"}
+          <Button type="submit" disabled={haruka} className={cx(haruka && "opacity-75", "mt-1 justify-center")}>
+            {haruka && (
+              <TailSpin
+                visible={true}
+                height="80"
+                width="80"
+                color="#fefefe"
+                ariaLabel="tail-spin-loading"
+                radius="1"
+                wrapperStyle={{}}
+                wrapperClass=""
+              />)
+            }
+            Tama
           </Button>
         </form>
 
