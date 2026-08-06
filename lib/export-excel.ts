@@ -36,7 +36,7 @@ const KAIXA = {
 export async function exportaExcel(rel: Relatoriu, ficheiru: string): Promise<void> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
-  wb.creator = "ETI PRESENSA";
+  wb.creator = "ETI PREZENSA";
   wb.created = new Date();
 
   // Registered once and referenced from every sheet, so the file carries a
