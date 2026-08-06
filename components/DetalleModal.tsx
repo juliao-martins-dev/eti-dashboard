@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { EvidensiaModal } from "@/components/EvidensiaModal";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Hint } from "@/components/ui/Field";
@@ -17,7 +18,7 @@ import {
   ORARIU,
   pad,
 } from "@/lib/format";
-import type { Data, Prezensa, Profesor } from "@/lib/types";
+import type { Data, Marka, Prezensa, Profesor } from "@/lib/types";
 
 /**
  * One day of one teacher, opened up: the four punches with their evidence, or
@@ -45,11 +46,18 @@ export function DetalleModal({
   const sabadu = d.getDay() === 6;
   const estadu = prezensa?.estadu ?? null;
   const komMarka = estadu === null || estadu === "PREZENTE";
+  /** Which punch is being inspected full size, with the cell it filled. */
+  const [evidensia, setEvidensia] = useState<{ marka: Marka; label: string } | null>(
+    null,
+  );
 
   return (
+    <>
     <Modal
       open
       onClose={onClose}
+      // The evidence sits on top; without this one Escape would close both.
+      eskape={evidensia === null}
       title={profesor.naran_kompletu}
       subtitle={
         <>
@@ -82,12 +90,13 @@ export function DetalleModal({
                 orariu={oras(ORARIU[k.kolumna])}
                 marka={markaBa(prezensa, k.kolumna)}
                 semSesaun={sabadu && lorokraik(k.kolumna)}
+                onEvidensia={(marka) => setEvidensia({ marka, label: k.label })}
               />
             ))}
           </div>
           <Hint>
             Marka ida-idak rai ho foto no koordenada GPS — evidénsia ne&apos;ebé troka
-            asinatura iha livru papél.
+            asinatura iha livru papél. Klik foto ka fatin atu haree boot.
           </Hint>
         </>
       ) : (
@@ -96,5 +105,16 @@ export function DetalleModal({
         </Hint>
       )}
     </Modal>
+
+    {evidensia ? (
+      <EvidensiaModal
+        profesor={profesor}
+        data={data}
+        label={evidensia.label}
+        marka={evidensia.marka}
+        onClose={() => setEvidensia(null)}
+      />
+    ) : null}
+    </>
   );
 }
