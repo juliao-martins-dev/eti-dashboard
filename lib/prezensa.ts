@@ -4,8 +4,8 @@ import { api, useApi, type Rekursu } from "./api";
 import { hotuQuery, type Filtru } from "./periodu";
 import type {
   Data,
-  EstaduRejistu,
-  EstaduRejistuResposta,
+  StatusRejistu,
+  StatusRejistuResposta,
   HotuResposta,
   KonfigSistema,
   OhinHotu,
@@ -31,24 +31,24 @@ export function useKonfig(): Rekursu<KonfigSistema> {
 }
 
 /**
- * Hand-write LISENSA / MISAUN / FERIADU / FALTA over a range.
+ * Hand-write LEAVE / MISSION / HOLIDAY / ABSENT over a range.
  *
  * The server skips Sundays, opens the monthly sheet if needed and refuses the
  * whole range with `iha_marka` when any day already holds punches — none of
  * which is re-implemented here.
  */
-export function rejistuEstadu(
-  dadus: EstaduRejistu,
-): Promise<EstaduRejistuResposta> {
-  return api<EstaduRejistuResposta>("/prezensa/estadu/", {
+export function rejistuStatus(
+  dadus: StatusRejistu,
+): Promise<StatusRejistuResposta> {
+  return api<StatusRejistuResposta>("/prezensa/status/", {
     method: "POST",
     body: JSON.stringify(dadus),
   });
 }
 
 /** Return a hand-written day to "no record". 204, or `iha_marka` if it has punches. */
-export function hasaiEstadu(profesor: number, data: Data): Promise<void> {
-  return api<void>("/prezensa/estadu/", {
+export function hasaiStatus(profesor: number, data: Data): Promise<void> {
+  return api<void>("/prezensa/status/", {
     method: "DELETE",
     body: JSON.stringify({ profesor, data }),
   });
