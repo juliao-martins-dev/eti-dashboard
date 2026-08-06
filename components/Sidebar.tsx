@@ -166,7 +166,7 @@ export function Sidebar({
         />
         <div className="min-w-0">
           <b className="block font-brand text-[15px] tracking-[0.02em]">
-            ETI PRESENSA
+            ETI PREZENSA
           </b>
           <span className="mt-[3px] flex items-center gap-[6px] text-[11px] text-muted">
             <i className="inline-block h-[7px] w-[7px] shrink-0 rounded-full bg-accent" />
