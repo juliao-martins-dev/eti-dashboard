@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import { IconAntes, IconTaka, IconTuir } from "@/components/icons";
 
@@ -47,15 +48,24 @@ export function Lightbox({
     };
   }, [onClose, total]);
 
-  if (!atual) return null;
+  if (!atual || typeof document === "undefined") return null;
 
-  return (
+  const botaun =
+    "rounded-full bg-white/10 p-2 text-white/75 backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white";
+
+  return createPortal(
+    /*
+     * Rendered into <body>, not where it is written. The sidebar that opens
+     * this carries a `translate`, and any non-initial translate makes an
+     * element the containing block for its fixed descendants — so inset-0
+     * would have covered the 218px sidebar instead of the viewport.
+     */
     <div
       role="dialog"
       aria-modal="true"
       aria-label={atual.naran ?? "Foto"}
       // Above the modals, which sit at z-50.
-      className="fixed inset-0 z-[60] flex animate-fade flex-col items-center justify-center gap-4 bg-[rgba(10,8,6,0.88)] p-5"
+      className="fixed inset-0 z-[60] flex animate-fade items-center justify-center bg-[rgba(8,6,4,0.82)] p-4 backdrop-blur-[3px] sm:p-8"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -64,34 +74,38 @@ export function Lightbox({
         type="button"
         onClick={onClose}
         aria-label="Taka"
-        className="absolute top-4 right-4 rounded-full bg-white/10 p-2 text-white/80 backdrop-blur-sm hover:bg-white/20 hover:text-white"
+        className={`absolute top-4 right-4 z-10 ${botaun}`}
       >
         <IconTaka className="h-5 w-5" />
       </button>
 
-      <div className="relative h-[74vh] w-[92vw] max-w-[860px]">
-        <Image
-          key={atual.src}
-          src={atual.src}
-          alt={atual.naran ?? "Foto"}
-          fill
-          unoptimized
-          sizes="92vw"
-          className="animate-pop object-contain"
-          priority
-        />
-      </div>
+      {/* Shrinks to the photo, so the caption tracks the image rather than
+          floating at the bottom of the screen. */}
+      <figure className="flex animate-pop flex-col items-center gap-3">
+        <div className="relative h-[68vh] w-[86vw] max-w-[680px] overflow-hidden rounded-[14px] bg-white/5 ring-1 ring-white/15 shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
+          <Image
+            key={atual.src}
+            src={atual.src}
+            alt={atual.naran ?? "Foto"}
+            fill
+            unoptimized
+            sizes="(min-width: 680px) 680px, 86vw"
+            className="object-contain"
+            priority
+          />
+        </div>
 
-      {atual.naran ? (
-        <p className="max-w-[92vw] truncate text-center text-[13px] font-medium text-white/85">
-          {atual.naran}
-          {total > 1 ? (
-            <span className="ml-2 font-mono text-white/55">
-              {i + 1}/{total}
-            </span>
-          ) : null}
-        </p>
-      ) : null}
+        {atual.naran ? (
+          <figcaption className="max-w-[86vw] truncate text-center text-[13px] font-medium text-white/85">
+            {atual.naran}
+            {total > 1 ? (
+              <span className="ml-2 font-mono text-white/50">
+                {i + 1}/{total}
+              </span>
+            ) : null}
+          </figcaption>
+        ) : null}
+      </figure>
 
       {total > 1 ? (
         <>
@@ -99,7 +113,7 @@ export function Lightbox({
             type="button"
             aria-label="Foto molok"
             onClick={() => setI((n) => (n - 1 + total) % total)}
-            className="absolute top-1/2 left-3 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white/80 hover:bg-white/20 hover:text-white"
+            className={`absolute top-1/2 left-3 -translate-y-1/2 ${botaun}`}
           >
             <IconAntes className="h-5 w-5" />
           </button>
@@ -107,12 +121,13 @@ export function Lightbox({
             type="button"
             aria-label="Foto tuir"
             onClick={() => setI((n) => (n + 1) % total)}
-            className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full bg-white/10 p-2 text-white/80 hover:bg-white/20 hover:text-white"
+            className={`absolute top-1/2 right-3 -translate-y-1/2 ${botaun}`}
           >
             <IconTuir className="h-5 w-5" />
           </button>
         </>
       ) : null}
-    </div>
+    </div>,
+    document.body,
   );
 }
