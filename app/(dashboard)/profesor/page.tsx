@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { IconAumenta, IconBuka } from "@/components/icons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -17,6 +17,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Panel } from "@/components/ui/Panel";
 import { useToast } from "@/components/ui/Toast";
 import { mensajenErru } from "@/lib/api";
+import { kopia } from "@/lib/kopia";
 import { aumentaProfesor, atualizaProfesor, useProfesor } from "@/lib/store";
 import type { Sexu, User } from "@/lib/types";
 
@@ -50,6 +51,7 @@ export default function ProfesorPage() {
   const [haruka, setHaruka] = useState(false);
   /** The one-time password from a 201; the server keeps only its hash. */
   const [senha, setSenha] = useState<{ naran: string; password: string } | null>(null);
+  const senhaRef = useRef<HTMLInputElement>(null);
 
   const lista = useMemo(() => {
     const q = buka.trim().toLowerCase();
@@ -114,6 +116,19 @@ export default function ProfesorPage() {
     } finally {
       setHaruka(false);
     }
+  }
+
+  async function kopiaSenha() {
+    if (!senha) return;
+    // Select it either way: on the fallback path this is what the admin can
+    // then hit Ctrl+C on, and it makes the click feel like it did something.
+    senhaRef.current?.select();
+    const ok = await kopia(senha.password);
+    toast(
+      ok
+        ? "Password kopia ona ✓"
+        : "La bele kopia otomátiku — password hili ona, uza Ctrl+C",
+    );
   }
 
   async function trokaAtivu(p: User) {
@@ -316,15 +331,14 @@ export default function ProfesorPage() {
         }
       >
         <div className="flex items-center gap-2">
-          <input readOnly value={senha?.password ?? ""} className="font-mono" />
-          <Button
-            variant="ghost"
-            onClick={() => {
-              if (!senha) return;
-              void navigator.clipboard?.writeText(senha.password);
-              toast("Password kopia ona");
-            }}
-          >
+          <input
+            ref={senhaRef}
+            readOnly
+            value={senha?.password ?? ""}
+            onFocus={(e) => e.currentTarget.select()}
+            className="font-mono"
+          />
+          <Button variant="ghost" onClick={kopiaSenha}>
             Kopia
           </Button>
         </div>
