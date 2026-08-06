@@ -68,7 +68,7 @@ export default function LoginPage() {
             className="h-[72px] w-[72px]"
           />
           <b className="mt-3 block font-brand text-[19px] tracking-[0.02em]">
-            ETI PRESENSA
+            ETI PREZENSA
           </b>
           <span className="mt-[3px] flex items-center gap-[6px] text-[12px] text-muted">
             <i className="inline-block h-[7px] w-[7px] rounded-full bg-accent" />
