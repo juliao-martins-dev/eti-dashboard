@@ -164,7 +164,7 @@ export default function ProfesorPage() {
               <Th>Nu. ID</Th>
               <Th>Kargu</Th>
               <Th>Kontaktu</Th>
-              <Th>Estadu konta</Th>
+              <Th>Status konta</Th>
             </tr>
           </thead>
           <tbody>
