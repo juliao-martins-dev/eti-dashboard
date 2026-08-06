@@ -23,8 +23,11 @@ export type NivelEdukasaun =
   | "MESTRADO"
   | "DOUTORAMENTU";
 
-/** `attendance.Prezensa.Estadu` */
-export type Estadu = "PREZENTE" | "FALTA" | "LISENSA" | "MISAUN" | "FERIADU";
+/**
+ * `attendance.Prezensa.Status` — stored values are English; the Tetun label
+ * the user reads comes back in `status_display`.
+ */
+export type Status = "PRESENT" | "ABSENT" | "LEAVE" | "MISSION" | "HOLIDAY";
 
 /** `attendance.Sesaun` — the two blocks of the school day. */
 export type Sesaun = "DADER" | "LOROKRAIK";
@@ -124,8 +127,8 @@ export interface Prezensa {
   oras_dader_fila: Oras | null;
   oras_lorokraik_tama: Oras | null;
   oras_lorokraik_fila: Oras | null;
-  estadu: Estadu;
-  estadu_display: string;
+  status: Status;
+  status_display: string;
   obs: string;
   marka: Marka[];
 }
@@ -169,20 +172,20 @@ export interface HotuResposta {
   profesor: PrezensaProfesorLoron[];
 }
 
-/** `POST /api/prezensa/estadu/` payload — `too` is Tetun `to'o`, kept ASCII. */
-export interface EstaduRejistu {
+/** `POST /api/prezensa/status/` payload — `too` is Tetun `to'o`, kept ASCII. */
+export interface StatusRejistu {
   profesor: number;
-  estadu: Estadu;
+  status: Status;
   husi: Data;
   too: Data;
   obs: string;
 }
 
 /** `201` from the same call. */
-export interface EstaduRejistuResposta {
+export interface StatusRejistuResposta {
   detail: string;
   profesor: number;
-  estadu: Estadu;
+  status: Status;
   husi: Data;
   too: Data;
   loron: Data[];
@@ -241,13 +244,13 @@ export interface IstoriaRezumu {
 
 /**
  * One row of `istoria`: a `Prezensa`, or an empty stand-in for a working day
- * nobody marked — which is why `id` and `estadu` are nullable here.
+ * nobody marked — which is why `id` and `status` are nullable here.
  */
 export interface IstoriaLoron
-  extends Omit<Prezensa, "id" | "estadu" | "estadu_display"> {
+  extends Omit<Prezensa, "id" | "status" | "status_display"> {
   id: number | null;
-  estadu: Estadu | null;
-  estadu_display: string | null;
+  status: Status | null;
+  status_display: string | null;
   semana: number;
   sabadu: boolean;
 }
