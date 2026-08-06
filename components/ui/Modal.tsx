@@ -15,6 +15,8 @@ export function Modal({
   subtitle,
   children,
   footer,
+  eskape = true,
+  larguraMax = "520px",
 }: {
   open: boolean;
   onClose: () => void;
@@ -22,15 +24,21 @@ export function Modal({
   subtitle?: ReactNode;
   children: ReactNode;
   footer?: ReactNode;
+  /**
+   * Set false while a modal is stacked on top of this one: both listen on the
+   * window, so one Escape would otherwise dismiss the pair at once.
+   */
+  eskape?: boolean;
+  larguraMax?: string;
 }) {
   useEffect(() => {
-    if (!open) return;
+    if (!open || !eskape) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     addEventListener("keydown", onKey);
     return () => removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  }, [open, eskape, onClose]);
 
   if (!open) return null;
 
@@ -44,7 +52,8 @@ export function Modal({
       <div
         role="dialog"
         aria-modal="true"
-        className="max-h-[88vh] w-full max-w-[520px] animate-pop overflow-auto rounded-[14px] border border-border bg-surface"
+        style={{ maxWidth: larguraMax }}
+        className="max-h-[88vh] w-full animate-pop overflow-auto rounded-[14px] border border-border bg-surface"
       >
         <header className="flex items-center justify-between border-b border-border px-[18px] py-[14px]">
           <div>
