@@ -33,16 +33,16 @@ import {
 } from "@/lib/format";
 import { useOhin } from "@/lib/ohin";
 import type { Filtru, Periodu } from "@/lib/periodu";
-import { hasaiEstadu, rejistuEstadu, useHotu } from "@/lib/prezensa";
+import { hasaiStatus, rejistuStatus, useHotu } from "@/lib/prezensa";
 import { useProfesor } from "@/lib/store";
-import type { Data, Estadu, EstaduRejistu, Marka, PrezensaProfesorLoron } from "@/lib/types";
+import type { Data, Marka, PrezensaProfesorLoron, Status, StatusRejistu } from "@/lib/types";
 
-/** PREZENTE is absent on purpose: only a punch can produce it. */
-const TIPU_LISENSA: { value: Estadu; label: string }[] = [
-  { value: "LISENSA", label: "Lisensa" },
-  { value: "MISAUN", label: "Misaun" },
-  { value: "FERIADU", label: "Feriadu" },
-  { value: "FALTA", label: "Falta" },
+/** PRESENT is absent on purpose: only a punch can produce it. */
+const TIPU_LISENSA: { value: Status; label: string }[] = [
+  { value: "LEAVE", label: "Lisensa" },
+  { value: "MISSION", label: "Misaun" },
+  { value: "HOLIDAY", label: "Feriadu" },
+  { value: "ABSENT", label: "Falta" },
 ];
 
 export default function PrezensaPage() {
@@ -94,9 +94,9 @@ function Prezensa({ ohin }: { ohin: Data }) {
   const [lisensaAbertu, setLisensaAbertu] = useState(false);
   const [haruka, setHaruka] = useState(false);
   const [konflitu, setKonflitu] = useState<Data[] | null>(null);
-  const [lisensa, setLisensa] = useState<EstaduRejistu>({
+  const [lisensa, setLisensa] = useState<StatusRejistu>({
     profesor: 0,
-    estadu: "LISENSA",
+    status: "LEAVE",
     husi: ohin,
     too: ohin,
     obs: "",
@@ -105,11 +105,11 @@ function Prezensa({ ohin }: { ohin: Data }) {
   const linha = dadus?.profesor ?? [];
   const komProfesor = filtru.who === "hotu";
 
-  function abreLisensa(inisial?: Partial<EstaduRejistu>) {
+  function abreLisensa(inisial?: Partial<StatusRejistu>) {
     setKonflitu(null);
     setLisensa({
       profesor: profesor[0]?.id ?? 0,
-      estadu: "LISENSA",
+      status: "LEAVE",
       husi: ohin,
       too: ohin,
       obs: "",
@@ -126,11 +126,13 @@ function Prezensa({ ohin }: { ohin: Data }) {
     setKonflitu(null);
     setHaruka(true);
     try {
-      const r = await rejistuEstadu(lisensa);
+      const r = await rejistuStatus(lisensa);
       setLisensaAbertu(false);
       setDetalle(null);
       refaz();
-      toast(`${r.total} loron rejistu ho ${r.estadu.toLowerCase()} ✓`);
+      const naran =
+        TIPU_LISENSA.find((t) => t.value === r.status)?.label ?? r.status;
+      toast(`${r.total} loron rejistu ho ${naran.toLowerCase()} ✓`);
     } catch (e) {
       // The whole range is refused when any day already holds punches — the
       // server names them, so the admin can go and look.
@@ -147,7 +149,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
   async function hasai(r: PrezensaProfesorLoron) {
     setHaruka(true);
     try {
-      await hasaiEstadu(r.profesor.id, r.data);
+      await hasaiStatus(r.profesor.id, r.data);
       setDetalle(null);
       refaz();
       toast("Rejistu hasai ona — loron fila ba mamuk");
@@ -191,9 +193,9 @@ function Prezensa({ ohin }: { ohin: Data }) {
                 const p = r.prezensa;
                 const d = dataDate(r.data);
                 const sabadu = d.getDay() === 6;
-                // Only PREZENTE has punches to show; a hand-written day puts
+                // Only PRESENT has punches to show; a hand-written day puts
                 // its OBS in their place, and an empty day has neither.
-                const komMarka = p?.estadu === "PREZENTE";
+                const komMarka = p?.status === "PRESENT";
 
                 return (
                   <ClickRow
@@ -231,8 +233,8 @@ function Prezensa({ ohin }: { ohin: Data }) {
                     )}
 
                     <Td>
-                      {p?.estadu ? (
-                        <Badge estadu={p.estadu} />
+                      {p?.status ? (
+                        <Badge status={p.status} />
                       ) : (
                         <span className="text-muted">—</span>
                       )}
@@ -256,7 +258,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
           prezensa={detalle.prezensa}
           onClose={() => setDetalle(null)}
           asaun={
-            detalle.prezensa && detalle.prezensa.estadu !== "PREZENTE" ? (
+            detalle.prezensa && detalle.prezensa.status !== "PRESENT" ? (
               <>
                 <Button
                   variant="ghost"
@@ -273,7 +275,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
                     setDetalle(null);
                     abreLisensa({
                       profesor: detalle.profesor.id,
-                      estadu: p.estadu,
+                      status: p.status,
                       husi: detalle.data,
                       too: detalle.data,
                       obs: p.obs,
@@ -328,9 +330,9 @@ function Prezensa({ ohin }: { ohin: Data }) {
           <Field label="Tipu" htmlFor="lTipu">
             <select
               id="lTipu"
-              value={lisensa.estadu}
+              value={lisensa.status}
               onChange={(e) =>
-                setLisensa({ ...lisensa, estadu: e.target.value as Estadu })
+                setLisensa({ ...lisensa, status: e.target.value as Status })
               }
             >
               {TIPU_LISENSA.map((t) => (
@@ -341,7 +343,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
             </select>
           </Field>
           <Field label={<>&nbsp;</>}>
-            <Badge estadu={lisensa.estadu} className="mt-2">
+            <Badge status={lisensa.status} className="mt-2">
               Estadu iha lista prezensa
             </Badge>
           </Field>
