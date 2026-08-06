@@ -18,14 +18,14 @@ export const metadata: Metadata = {
   // Needed to turn the relative OG image into an absolute URL. Override with
   // NEXT_PUBLIC_SITE_URL when this is served somewhere other than a dev box.
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
-  title: "ETI PRESENSA · Admin",
+  title: "ETI PREZENSA · Admin",
   description: "Painel administrasaun prezensa ba profesór/a ETI Dili.",
   icons: {
     icon: [{ url: "/favicon.png", type: "image/png" }],
     apple: [{ url: "/icon.png" }],
   },
   openGraph: {
-    title: "ETI PRESENSA · Admin",
+    title: "ETI PREZENSA · Admin",
     description: "Painel administrasaun prezensa ba profesór/a ETI Dili.",
     images: [{ url: "/eti.jpg", width: 200, height: 200 }],
   },
