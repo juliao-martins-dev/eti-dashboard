@@ -163,6 +163,27 @@ received; a full month for the whole school is ~1 500 lines.
 Errors: `400 {code: "invalid_period"}` (bad date/fulan/tinan/semana),
 `400 {code: "invalid_profesor"}` (non-numeric `profesor`).
 
+Both `hotu` and `ohin-hotu` list **teachers and admins** (`role` PROFESSOR or
+ADMIN, active only) — the director keeps a sheet like everyone else. Students
+never appear.
+
+### 4.1 One teacher, paper-sheet layout — `GET /api/prezensa/istoria/?profesor=<id>`
+
+For a per-teacher view shaped exactly like the printed book (header
+Naran/Kargu, one row per working day with the four time columns, week
+numbers, monthly rezumu), admins may pass `?profesor=<id>` to `istoria/`:
+
+```
+GET /api/prezensa/istoria/?fulan=7&tinan=2026&profesor=6
+```
+
+Response: `{profesor, kargu, fulan, fulan_display, tinan, semana,
+rezumu{loron_servisu, marka_ona, seidauk_marka, marka_total, atrazadu},
+loron[]}` — each `loron[]` row carries `data`, `loron` (weekday), `semana`,
+`sabadu`, the four `oras_*` columns, `estadu`, `obs` and nested `marka`.
+Without the param it returns the caller's own sheet; a non-admin passing it
+gets `403`; unknown id → `400 {code: "invalid_profesor"}`.
+
 ## 5. Hand-written days — `/api/prezensa/estadu/` (admin)
 
 ### `POST` — register LISENSA / MISAUN / FERIADU / FALTA over a range
