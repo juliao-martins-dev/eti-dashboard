@@ -205,7 +205,7 @@ export default function ProfesorPage() {
         subtitle={
           edita
             ? "Atualiza dadus konta profesór nian"
-            : "Kria konta foun ba aplikasaun ETI PRESENSA"
+            : "Kria konta foun ba aplikasaun ETI PREZENSA"
         }
         footer={
           <>
