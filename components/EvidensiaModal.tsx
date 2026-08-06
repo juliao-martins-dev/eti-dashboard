@@ -1,12 +1,20 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
+import { Seg } from "@/components/ui/Seg";
 import { cx } from "@/lib/cx";
 import { dataDate, dataNaran, LORON_KURTU, oras } from "@/lib/format";
 import type { Data, Marka, Profesor } from "@/lib/types";
+
+type Kamada = "satelite" | "mapa";
+
+const KAMADA: { value: Kamada; label: string }[] = [
+  { value: "satelite", label: "Satélite" },
+  { value: "mapa", label: "Mapa" },
+];
 
 /**
  * The proof behind one punch: the photo taken at the moment, and where the
@@ -32,16 +40,30 @@ export function EvidensiaModal({
   const lat = Number(marka.latitude);
   const lon = Number(marka.longitude);
   const koordenadaOk = Number.isFinite(lat) && Number.isFinite(lon);
+  const [kamada, setKamada] = useState<Kamada>("satelite");
 
-  // A small box around the point; OpenStreetMap needs no key, which matters
-  // for a deployment that may never see the public internet.
+  /*
+   * Two keyless providers, because OpenStreetMap has no aerial imagery of its
+   * own — it is vector data, so `layer=` only ever offers drawn maps. Google's
+   * `output=embed` covers the satellite view without an API key or a billing
+   * account, which is what makes it usable here.
+   *
+   * Both need the public internet. Where there is none the frame comes up
+   * blank, and the coordinates, distance and verdict below still answer the
+   * question, because those come from eti-api.
+   */
   const raiu = 0.0015;
-  const mapa = koordenadaOk
-    ? `https://www.openstreetmap.org/export/embed.html?bbox=${lon - raiu},${lat - raiu},${lon + raiu},${lat + raiu}&layer=mapnik&marker=${lat},${lon}`
-    : null;
-  const mapaLink = koordenadaOk
-    ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=18/${lat}/${lon}`
-    : null;
+  const mapa = !koordenadaOk
+    ? null
+    : kamada === "satelite"
+      ? `https://maps.google.com/maps?q=${lat},${lon}&t=k&z=18&hl=tet&output=embed`
+      : `https://www.openstreetmap.org/export/embed.html?bbox=${lon - raiu},${lat - raiu},${lon + raiu},${lat + raiu}&layer=mapnik&marker=${lat},${lon}`;
+
+  const mapaLink = !koordenadaOk
+    ? null
+    : kamada === "satelite"
+      ? `https://www.google.com/maps?q=${lat},${lon}&t=k&z=18`
+      : `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=18/${lat}/${lon}`;
 
   const ihaEskola = marka.iha_eskola;
   const distansia = Math.round(marka.distansia_metru ?? 0);
@@ -108,14 +130,28 @@ export function EvidensiaModal({
       </div>
 
       {mapa ? (
-        <div className="h-[210px] w-full overflow-hidden rounded-[10px] border border-border bg-bg">
-          <iframe
-            title={`Fatin marka ${label}`}
-            src={mapa}
-            loading="lazy"
-            className="h-full w-full border-0"
-          />
-        </div>
+        <>
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[12px] font-semibold text-muted">Fatin marka</span>
+            <Seg
+              ariaLabel="Kamada mapa"
+              options={KAMADA}
+              value={kamada}
+              onChange={setKamada}
+            />
+          </div>
+          <div className="h-[210px] w-full overflow-hidden rounded-[10px] border border-border bg-bg">
+            <iframe
+              // Remounts on a layer change; without it the frame keeps the
+              // provider it first loaded.
+              key={kamada}
+              title={`Fatin marka ${label}`}
+              src={mapa}
+              loading="lazy"
+              className="h-full w-full border-0"
+            />
+          </div>
+        </>
       ) : null}
 
       <div className="rounded-[10px] border border-border bg-bg px-3 py-1">
