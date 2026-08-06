@@ -180,7 +180,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
                   {k.label}
                 </Th>
               ))}
-              <Th>Estadu</Th>
+              <Th>Status</Th>
             </tr>
           </thead>
           <tbody>
@@ -294,7 +294,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
         open={lisensaAbertu}
         onClose={() => setLisensaAbertu(false)}
         title="Rejistu Lisensa"
-        subtitle="Marka estadu ba loron ne'ebé profesór la marka prezensa"
+        subtitle="Marka status ba loron ne'ebé profesór la marka prezensa"
         footer={
           <>
             <Button
@@ -344,7 +344,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
           </Field>
           <Field label={<>&nbsp;</>}>
             <Badge status={lisensa.status} className="mt-2">
-              Estadu iha lista prezensa
+              Status iha lista prezensa
             </Badge>
           </Field>
         </Row2>
@@ -383,7 +383,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
             role="alert"
             className="rounded-[8px] border border-[color-mix(in_srgb,var(--color-bad)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-bad)_9%,transparent)] px-[11px] py-[9px] text-[12px] font-medium text-bad"
           >
-            Loron ne&apos;e iha marka ona, la bele taka ho estadu:{" "}
+            Loron ne&apos;e iha marka ona, la bele taka ho status:{" "}
             <b className="font-mono">{konflitu.join(", ")}</b>. La iha buat ida
             rejistu — troka períodu no koko fila fali.
           </p>
