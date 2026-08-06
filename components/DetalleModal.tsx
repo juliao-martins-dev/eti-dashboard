@@ -44,8 +44,8 @@ export function DetalleModal({
 }) {
   const d = dataDate(data);
   const sabadu = d.getDay() === 6;
-  const estadu = prezensa?.estadu ?? null;
-  const komMarka = estadu === null || estadu === "PREZENTE";
+  const status = prezensa?.status ?? null;
+  const komMarka = status === null || status === "PRESENT";
   /** Which punch is being inspected full size, with the cell it filled. */
   const [evidensia, setEvidensia] = useState<{ marka: Marka; label: string } | null>(
     null,
@@ -63,10 +63,10 @@ export function DetalleModal({
         <>
           {LORON_KURTU[d.getDay()]}, {pad(d.getDate())}{" "}
           {FULAN_NARAN[d.getMonth() + 1]} {d.getFullYear()}
-          {estadu ? (
+          {status ? (
             <>
               {" · "}
-              <Badge estadu={estadu} />
+              <Badge status={status} />
             </>
           ) : null}
         </>
