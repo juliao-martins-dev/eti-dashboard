@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cx } from "@/lib/cx";
-import type { Estadu } from "@/lib/types";
+import type { Status } from "@/lib/types";
 
 export type Tone = "ok" | "bad" | "info" | "viol" | "muted";
 
@@ -16,28 +16,41 @@ const KOR: Record<Tone, string> = {
   muted: "text-muted bg-bg",
 };
 
-const ESTADU_TONE: Record<Estadu, Tone> = {
-  PREZENTE: "ok",
-  FALTA: "bad",
-  LISENSA: "info",
-  MISAUN: "viol",
-  FERIADU: "muted",
+const STATUS_TONE: Record<Status, Tone> = {
+  PRESENT: "ok",
+  ABSENT: "bad",
+  LEAVE: "info",
+  MISSION: "viol",
+  HOLIDAY: "muted",
+};
+
+/**
+ * The stored values are English, the interface is Tetun. Callers that pass no
+ * children get the label, never the raw value — `status_display` from the API
+ * says the same thing, but a badge should not need the whole row to render.
+ */
+export const STATUS_NARAN: Record<Status, string> = {
+  PRESENT: "Prezente",
+  ABSENT: "Falta",
+  LEAVE: "Lisensa",
+  MISSION: "Misaun",
+  HOLIDAY: "Feriadu",
 };
 
 export function Badge({
-  estadu,
+  status,
   tone,
   children,
   className,
 }: {
   /** Picks both the colour and, unless children say otherwise, the label. */
-  estadu?: Estadu;
+  status?: Status;
   /** For labels that are not an attendance state, such as an account status. */
   tone?: Tone;
   children?: ReactNode;
   className?: string;
 }) {
-  const kor = tone ?? (estadu ? ESTADU_TONE[estadu] : "muted");
+  const kor = tone ?? (status ? STATUS_TONE[status] : "muted");
   return (
     <span
       className={cx(
@@ -46,7 +59,7 @@ export function Badge({
         className,
       )}
     >
-      {children ?? estadu}
+      {children ?? (status ? STATUS_NARAN[status] : null)}
     </span>
   );
 }
