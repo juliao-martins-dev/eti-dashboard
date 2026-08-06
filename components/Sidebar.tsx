@@ -6,11 +6,14 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   IconFoto,
+  IconKonfigurasaun,
   IconPainel,
   IconPrezensa,
   IconProfesor,
   IconRelatoriu,
+  IconSai,
 } from "@/components/icons";
+import { Lightbox } from "@/components/ui/Lightbox";
 import { useToast } from "@/components/ui/Toast";
 import { mensajenErru } from "@/lib/api";
 import { atualizaFoto, logout, useSesaun } from "@/lib/auth";
@@ -216,6 +219,7 @@ function UserChip() {
   const sesaun = useSesaun();
   const [abertu, setAbertu] = useState(false);
   const [haruka, setHaruka] = useState(false);
+  const [lightbox, setLightbox] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const foneRef = useRef<HTMLInputElement>(null);
 
@@ -235,8 +239,9 @@ function UserChip() {
     };
   }, [abertu]);
 
+  // Same gap as the nav items above, so the two icon columns line up.
   const item =
-    "w-full rounded-[6px] px-[10px] py-[7px] text-left text-[12.5px] font-medium text-muted hover:bg-bg hover:text-text";
+    "flex w-full items-center gap-[10px] rounded-[6px] px-[10px] py-[7px] text-left text-[12.5px] font-medium text-muted hover:bg-bg hover:text-text";
 
   // The profile cached at login; the guard sends you to /login without one.
   const naran = sesaun?.naran_kompletu ?? "…";
@@ -274,7 +279,21 @@ function UserChip() {
         <div className="absolute bottom-full left-3 z-40 mb-1 w-[calc(100%-24px)] animate-pop rounded-[10px] border border-border bg-surface p-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
           <div className="flex items-center gap-[10px] border-b border-border px-[10px] pt-[9px] pb-[10px]">
             <div className="relative shrink-0">
-              <Avatar foto={sesaun?.foto ?? null} naran={naran} tamañu={44} />
+              {/* The photo opens full size; the badge beside it replaces the
+                  photo. Siblings, not nested, so neither swallows the other. */}
+              <button
+                type="button"
+                onClick={() => sesaun?.foto && setLightbox(true)}
+                disabled={!sesaun?.foto}
+                aria-label={sesaun?.foto ? "Haree foto boot" : undefined}
+                title={sesaun?.foto ? "Haree foto boot" : undefined}
+                className={cx(
+                  "block rounded-full",
+                  sesaun?.foto && "cursor-zoom-in hover:brightness-95",
+                )}
+              >
+                <Avatar foto={sesaun?.foto ?? null} naran={naran} tamañu={44} />
+              </button>
               {/* The ring in --surface cuts the badge out of the avatar, so it
                   reads as attached rather than dropped on top. */}
               <button
@@ -314,6 +333,7 @@ function UserChip() {
               router.push("/konfig");
             }}
           >
+            <IconKonfigurasaun className="h-4 w-4 shrink-0" />
             Konfigurasaun
           </button>
           <button
@@ -326,6 +346,7 @@ function UserChip() {
               toast("Sai husi sistema ✓");
             }}
           >
+            <IconSai className="h-4 w-4 shrink-0" />
             Sai (logout)
           </button>
         </div>
@@ -346,6 +367,13 @@ function UserChip() {
           </small>
         </div>
       </button>
+
+      {lightbox && sesaun?.foto ? (
+        <Lightbox
+          imajen={[{ src: sesaun.foto, naran }]}
+          onClose={() => setLightbox(false)}
+        />
+      ) : null}
 
       {/* Lives outside the menu so the picker survives the menu closing. */}
       <input
