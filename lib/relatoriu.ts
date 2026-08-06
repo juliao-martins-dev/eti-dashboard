@@ -68,7 +68,7 @@ function agrega(linha: PrezensaProfesorLoron[]): {
     a.serv++;
     if (!prezensa) continue;
 
-    if (prezensa.estadu === "PREZENTE") {
+    if (prezensa.status === "PRESENT") {
       a.prez++;
       // A day counts as late if either arrival was.
       if (
@@ -77,9 +77,9 @@ function agrega(linha: PrezensaProfesorLoron[]): {
       ) {
         a.atraz++;
       }
-    } else if (prezensa.estadu === "FALTA") a.falta++;
-    else if (prezensa.estadu === "LISENSA") a.lis++;
-    else if (prezensa.estadu === "MISAUN") a.mis++;
+    } else if (prezensa.status === "ABSENT") a.falta++;
+    else if (prezensa.status === "LEAVE") a.lis++;
+    else if (prezensa.status === "MISSION") a.mis++;
   }
 
   for (const a of rezumu.values()) {
@@ -187,10 +187,13 @@ export function selaAsinatura(
   ];
 }
 
-/** The OBS column: the hand-written reason, or the estadu when it is not PREZENTE. */
+/** The OBS column: the hand-written reason, or the status when it is not PRESENT. */
 export function selaObs(r: PrezensaProfesorLoron): string {
   const p = r.prezensa;
   if (!p) return "";
-  if (p.estadu === "PREZENTE") return p.obs ?? "";
-  return p.obs ? `${p.estadu} — ${p.obs}` : p.estadu;
+  if (p.status === "PRESENT") return p.obs ?? "";
+  // `status_display`, not `status`: the exported sheet is a Tetun document,
+  // and the stored value is English.
+  const naran = p.status_display ?? p.status;
+  return p.obs ? `${naran} — ${p.obs}` : naran;
 }
