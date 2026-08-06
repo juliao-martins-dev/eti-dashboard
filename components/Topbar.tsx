@@ -7,7 +7,7 @@ import { useOhin } from "@/lib/ohin";
 
 const TITULU: Record<string, [string, string]> = {
   "/": ["Painel", "Rezumu prezensa ohin loron — ETI Dili"],
-  "/profesor": ["Profesór sira", "Konta sira ne'ebé uza aplikasaun ETI PRESENSA"],
+  "/profesor": ["Profesór sira", "Konta sira ne'ebé uza aplikasaun ETI PREZENSA"],
   "/prezensa": ["Prezensa", "Lista prezensa ho evidénsia marka"],
   "/relatoriu": ["Relatóriu", "Rezumu prezensa tuir períodu"],
   "/konfig": ["Konfigurasaun", "Aparénsia no informasaun sistema"],
