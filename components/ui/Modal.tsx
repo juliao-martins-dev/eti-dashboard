@@ -91,7 +91,7 @@ export function Modal({
         <div className="flex flex-col gap-3 px-[18px] py-4">{children}</div>
 
         {footer ? (
-          <footer className="flex justify-end gap-2 border-t border-border px-[18px] py-[13px]">
+          <footer className="flex flex-wrap items-center justify-end gap-2 border-t border-border px-[18px] py-[13px]">
             {footer}
           </footer>
         ) : null}
