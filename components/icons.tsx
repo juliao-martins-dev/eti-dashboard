@@ -121,6 +121,41 @@ export function IconGeo({ className }: IconProps) {
   );
 }
 
+export function IconRai({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}
+
+export function IconXave({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <circle cx="7.5" cy="15.5" r="5.5" />
+      <path d="M11.4 11.6L21 2M15.5 6.5l3 3L22 6l-3-3" />
+    </svg>
+  );
+}
+
+export function IconHamos({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
+export function IconDezativa({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M12 2v10" />
+      <path d="M18.4 6.6a9 9 0 1 1-12.8 0" />
+    </svg>
+  );
+}
+
 export function IconSai({ className }: IconProps) {
   return (
     <svg {...base} className={className} aria-hidden="true">
