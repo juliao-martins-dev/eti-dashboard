@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
-import { useSesaun } from "@/lib/auth";
+import { logout, useSesaun } from "@/lib/auth";
 
 export default function DashboardLayout({
   children,
@@ -24,8 +24,18 @@ export default function DashboardLayout({
   // SESAUN_BOOT has already turned away anyone without a token before paint,
   // so this is really here for signing out from the sidebar and for a refresh
   // token that expired mid-session, neither of which reloads the document.
+  //
+  // A non-admin profile is treated as signed out and its tokens dropped —
+  // login refuses those accounts now, but a session stored before that gate
+  // existed would otherwise sit here hitting 403 on every screen.
   useEffect(() => {
-    if (sesaun === null) router.replace("/login");
+    if (sesaun === null) {
+      router.replace("/login");
+      return;
+    }
+    if (sesaun && sesaun.role !== "ADMIN") {
+      void logout().finally(() => router.replace("/login"));
+    }
   }, [sesaun, router]);
 
   return (
