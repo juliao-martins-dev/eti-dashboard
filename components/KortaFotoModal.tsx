@@ -55,6 +55,11 @@ export function KortaFotoModal({
       open
       onClose={onKansela}
       larguraMax="440px"
+      // Framing is work in progress: a stray click on the backdrop or a
+      // reflexive Escape should not throw it away. Only ✕, Kansela or Rai
+      // close this one.
+      eskape={false}
+      foraLiur={false}
       title="Korta foto"
       subtitle="Book imajen no uza zoom atu hili parte ne'ebé sei sai avatar"
       footer={
