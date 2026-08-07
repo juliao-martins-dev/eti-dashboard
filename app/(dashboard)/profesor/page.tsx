@@ -1,7 +1,15 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { IconAumenta, IconBuka } from "@/components/icons";
+import {
+  IconAumenta,
+  IconBuka,
+  IconDezativa,
+  IconHamos,
+  IconRai,
+  IconTaka,
+  IconXave,
+} from "@/components/icons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import {
@@ -16,9 +24,15 @@ import { Field, Hint, Row2 } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { Panel } from "@/components/ui/Panel";
 import { useToast } from "@/components/ui/Toast";
-import { mensajenErru } from "@/lib/api";
+import { ApiErru, mensajenErru } from "@/lib/api";
 import { kopia } from "@/lib/kopia";
-import { aumentaProfesor, atualizaProfesor, useProfesor } from "@/lib/store";
+import {
+  aumentaProfesor,
+  atualizaProfesor,
+  hamosProfesor,
+  resetPasswordProfesor,
+  useProfesor,
+} from "@/lib/store";
 import type { Sexu, User } from "@/lib/types";
 
 interface Form {
@@ -49,8 +63,14 @@ export default function ProfesorPage() {
   const [alvu, setAlvu] = useState<Alvu>(null);
   const [form, setForm] = useState<Form>(FORM_VAZIU);
   const [haruka, setHaruka] = useState(false);
-  /** The one-time password from a 201; the server keeps only its hash. */
-  const [senha, setSenha] = useState<{ naran: string; password: string } | null>(null);
+  /**
+   * The password to hand over, from a create or a reset. The server keeps only
+   * its hash, so this card is the one chance to read it either way — `tipu`
+   * only decides the wording.
+   */
+  const [senha, setSenha] = useState<
+    { naran: string; password: string; tipu: "foun" | "reset" } | null
+  >(null);
   const senhaRef = useRef<HTMLInputElement>(null);
   /** Confirms the copy on the button itself; a toast alone is easy to miss. */
   const [kopiaOk, setKopiaOk] = useState(false);
@@ -105,7 +125,11 @@ export default function ProfesorPage() {
         // Straight into the hand-over: closing without reading the password
         // means it is gone for good.
         setKopiaOk(false);
-        setSenha({ naran: kriadu.naran_kompletu, password: kriadu.password_inisial });
+        setSenha({
+          naran: kriadu.naran_kompletu,
+          password: kriadu.password_inisial,
+          tipu: "foun",
+        });
         setAlvu(null);
       } else if (alvu) {
         await atualizaProfesor(alvu.id, dadus);
@@ -154,7 +178,76 @@ export default function ProfesorPage() {
     }
   }
 
+  /* -- Hamos profesór: two password fields, then one irreversible call ---- */
+
+  const [hamos, setHamos] = useState<User | null>(null);
+  const [senha1, setSenha1] = useState("");
+  const [senha2, setSenha2] = useState("");
+
+  const senhaHanesan = senha1.length > 0 && senha1 === senha2;
+
+  function abreHamos(p: User) {
+    setSenha1("");
+    setSenha2("");
+    setHamos(p);
+  }
+
+  async function konfirmaHamos() {
+    if (!hamos || !senhaHanesan) return;
+    setHaruka(true);
+    try {
+      await hamosProfesor(hamos.id, senha1);
+      setHamos(null);
+      setAlvu(null);
+      toast(`Profesór ${hamos.naran_kompletu} hamos ona`);
+    } catch (e) {
+      // A wrong password must not leave the typed value behind for a retry.
+      if (e instanceof ApiErru && e.code === "password_sala") {
+        setSenha1("");
+        setSenha2("");
+      }
+      toast(mensajenErru(e));
+    } finally {
+      setHaruka(false);
+    }
+  }
+
+  /* -- Reset password: two matching fields, then hand it over ------------- */
+
+  const [reset, setReset] = useState<User | null>(null);
+  const [nova1, setNova1] = useState("");
+  const [nova2, setNova2] = useState("");
+
+  const novaHanesan = nova1.length > 0 && nova1 === nova2;
+
+  function abreReset(p: User) {
+    setNova1("");
+    setNova2("");
+    setReset(p);
+  }
+
+  async function konfirmaReset() {
+    if (!reset || !novaHanesan) return;
+    setHaruka(true);
+    try {
+      await resetPasswordProfesor(reset.id, nova1, nova2);
+      const naran = reset.naran_kompletu;
+      setReset(null);
+      setAlvu(null);
+      // Straight into the hand-over card: the teacher has to be told what it
+      // is, and the server never sends it back.
+      setKopiaOk(false);
+      setSenha({ naran, password: nova1, tipu: "reset" });
+    } catch (e) {
+      toast(mensajenErru(e));
+    } finally {
+      setHaruka(false);
+    }
+  }
+
   const edita = alvu !== null && alvu !== "foun";
+  /** An ADMIN row is read-only here: the API refuses both destructive calls. */
+  const alvuEhAdmin = edita && (alvu as User).role === "ADMIN";
 
   return (
     <>
@@ -198,7 +291,12 @@ export default function ProfesorPage() {
                 return (
                   <ClickRow key={p.id} onOpen={() => abre(p)}>
                     <Td>
-                      <NameCell naran={p.naran_kompletu} sub={p.email} />
+                      <div className="flex items-center gap-2">
+                        <NameCell naran={p.naran_kompletu} sub={p.email} />
+                        {p.role === "ADMIN" ? (
+                          <Badge tone="viol">Admin</Badge>
+                        ) : null}
+                      </div>
                     </Td>
                     <Td className="font-mono">{p.numeru_id}</Td>
                     <Td>{p.kargu || "—"}</Td>
@@ -229,22 +327,46 @@ export default function ProfesorPage() {
         }
         footer={
           <>
-            {edita ? (
-              <Button
-                variant="ghost"
-                className="mr-auto"
-                disabled={haruka}
-                onClick={() => trokaAtivu(alvu as User)}
-              >
-                {((alvu as User).is_active ?? true)
-                  ? "Dezativa konta"
-                  : "Ativa fila fali"}
-              </Button>
+            {/* Grouped and pushed left: these act on the account, not on the
+                form, and each carries the colour of what it does — amber for
+                reversible, blue for the credential, red for irreversible. */}
+            {edita && !alvuEhAdmin ? (
+              <div className="mr-auto flex flex-wrap gap-2">
+                <Button
+                  variant="ghost"
+                  tone={((alvu as User).is_active ?? true) ? "warn" : "ok"}
+                  disabled={haruka}
+                  onClick={() => trokaAtivu(alvu as User)}
+                >
+                  <IconDezativa />
+                  {((alvu as User).is_active ?? true) ? "Dezativa" : "Ativa"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  tone="info"
+                  disabled={haruka}
+                  onClick={() => abreReset(alvu as User)}
+                >
+                  <IconXave />
+                  Reset password
+                </Button>
+                <Button
+                  variant="ghost"
+                  tone="bad"
+                  disabled={haruka}
+                  onClick={() => abreHamos(alvu as User)}
+                >
+                  <IconHamos />
+                  Hamos
+                </Button>
+              </div>
             ) : null}
             <Button variant="ghost" disabled={haruka} onClick={() => setAlvu(null)}>
+              <IconTaka />
               Kansela
             </Button>
             <Button disabled={haruka} onClick={salva}>
+              {edita ? <IconRai /> : <IconAumenta />}
               {haruka ? "Haruka…" : edita ? "Rai mudansa" : "Kria konta"}
             </Button>
           </>
@@ -322,13 +444,22 @@ export default function ProfesorPage() {
       <Modal
         open={senha !== null}
         onClose={() => setSenha(null)}
-        title="Konta kria ona ✓"
-        subtitle={senha ? `Password inisiál ba ${senha.naran}` : undefined}
+        title={senha?.tipu === "reset" ? "Password foun ✓" : "Konta kria ona ✓"}
+        subtitle={
+          senha
+            ? `${senha.tipu === "reset" ? "Password foun" : "Password inisiál"} ba ${senha.naran}`
+            : undefined
+        }
         footer={
           <Button
             onClick={() => {
+              const tipu = senha?.tipu;
               setSenha(null);
-              toast("Konta profesór kria ona ✓");
+              toast(
+                tipu === "reset"
+                  ? "Password reset ona ✓"
+                  : "Konta profesór kria ona ✓",
+              );
             }}
           >
             Hotu
@@ -348,9 +479,140 @@ export default function ProfesorPage() {
           </Button>
         </div>
         <Hint>
-          Password ne&apos;e sei la aparese fali. Servidor rai de&apos;it nia hash,
-          no la iha endpoint atu rekupera — se lakon, presiza kria konta foun.
+          Password ne&apos;e sei la aparese fali. Servidor rai de&apos;it nia
+          hash, no la iha endpoint atu rekupera — se lakon,{" "}
+          {senha?.tipu === "reset"
+            ? "presiza halo reset fila fali."
+            : "presiza kria konta foun."}
         </Hint>
+      </Modal>
+
+      {/*
+        Hamos profesór. Stacked on top of the edit modal, so it takes over the
+        outside-click: one stray click must not throw away a half-typed
+        password.
+      */}
+      <Modal
+        open={hamos !== null}
+        onClose={() => setHamos(null)}
+        title="Hamos profesór"
+        subtitle={hamos ? hamos.naran_kompletu : undefined}
+        foraLiur={false}
+        larguraMax="460px"
+        footer={
+          <>
+            <Button variant="ghost" disabled={haruka} onClick={() => setHamos(null)}>
+              <IconTaka />
+              Kansela
+            </Button>
+            <Button
+              tone="bad"
+              disabled={haruka || !senhaHanesan}
+              onClick={konfirmaHamos}
+            >
+              <IconHamos />
+              {haruka ? "Hamos…" : "Hamos permanente"}
+            </Button>
+          </>
+        }
+      >
+        <div className="mb-4 rounded-[10px] border border-[color-mix(in_srgb,var(--color-bad)_35%,transparent)] bg-[color-mix(in_srgb,var(--color-bad)_9%,transparent)] px-4 py-3 text-[13.5px] leading-relaxed text-bad">
+          Karik ita boot hakarak hamos manorin ho id{" "}
+          <strong>{hamos?.numeru_id ?? "###"}</strong> sujere halo backup report
+          molok atu delete atu nunee labele akontese buat neebe ita lakoi!
+        </div>
+
+        <Hint>
+          Hamos sei lakon mós lista prezensa, loron no marka hotu-hotu ho
+          sira-nia foto. La bele fila fali.
+        </Hint>
+
+        <div className="mt-4">
+          <Field label="Password admin" htmlFor="fSenha1">
+            <input
+              id="fSenha1"
+              type="password"
+              autoComplete="current-password"
+              value={senha1}
+              onChange={(e) => setSenha1(e.target.value)}
+              placeholder="Hatama ita-nia password"
+            />
+          </Field>
+        </div>
+
+        <Field label="Konfirma password" htmlFor="fSenha2">
+          <input
+            id="fSenha2"
+            type="password"
+            autoComplete="current-password"
+            value={senha2}
+            onChange={(e) => setSenha2(e.target.value)}
+            placeholder="Hatama fila fali"
+          />
+        </Field>
+        {senha2.length > 0 && senha1 !== senha2 ? (
+          <p className="mt-1 text-[12.5px] text-bad">Password la hanesan</p>
+        ) : null}
+      </Modal>
+
+      {/* Reset password — stacked on the edit modal, same as Hamos. */}
+      <Modal
+        open={reset !== null}
+        onClose={() => setReset(null)}
+        title="Reset password"
+        subtitle={reset ? reset.naran_kompletu : undefined}
+        foraLiur={false}
+        larguraMax="460px"
+        footer={
+          <>
+            <Button variant="ghost" disabled={haruka} onClick={() => setReset(null)}>
+              <IconTaka />
+              Kansela
+            </Button>
+            <Button
+              tone="info"
+              disabled={haruka || !novaHanesan}
+              onClick={konfirmaReset}
+            >
+              <IconXave />
+              {haruka ? "Rai…" : "Rai password foun"}
+            </Button>
+          </>
+        }
+      >
+        <Hint>
+          Profesór ne&apos;ebé lakon password presiza kontaktu admin. Hatama
+          password foun iha ne&apos;e, depois entrega ba nia. Sesaun hotu-hotu
+          ne&apos;ebé nia loke ona sei taka, entaun nia tenke tama fila fali ho
+          password foun.
+        </Hint>
+
+        <div className="mt-4">
+          <Field label="Password foun" htmlFor="fNova1">
+            <input
+              id="fNova1"
+              type="password"
+              autoComplete="new-password"
+              value={nova1}
+              onChange={(e) => setNova1(e.target.value)}
+              placeholder="Hatama password foun"
+            />
+          </Field>
+        </div>
+
+        <Field label="Konfirma password foun" htmlFor="fNova2">
+          <input
+            id="fNova2"
+            type="password"
+            autoComplete="new-password"
+            value={nova2}
+            onChange={(e) => setNova2(e.target.value)}
+            placeholder="Hatama fila fali"
+          />
+        </Field>
+        {nova2.length > 0 && nova1 !== nova2 ? (
+          <p className="mt-1 text-[12.5px] text-bad">Password la hanesan</p>
+        ) : null}
       </Modal>
     </>
   );
