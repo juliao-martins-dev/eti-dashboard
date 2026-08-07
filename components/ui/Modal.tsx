@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { IconTaka } from "@/components/icons";
 
 /**
@@ -16,6 +17,7 @@ export function Modal({
   children,
   footer,
   eskape = true,
+  foraLiur = true,
   larguraMax = "520px",
 }: {
   open: boolean;
@@ -29,6 +31,11 @@ export function Modal({
    * window, so one Escape would otherwise dismiss the pair at once.
    */
   eskape?: boolean;
+  /**
+   * Set false when a stray click outside must not throw away work in progress
+   * — the dialog then closes only from its own ✕ or buttons.
+   */
+  foraLiur?: boolean;
   larguraMax?: string;
 }) {
   useEffect(() => {
@@ -40,13 +47,20 @@ export function Modal({
     return () => removeEventListener("keydown", onKey);
   }, [open, eskape, onClose]);
 
-  if (!open) return null;
+  if (!open || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
+    /*
+     * Rendered into <body>, not where it is written. The sidebar carries a
+     * `translate` for its drawer, and any non-initial transform makes an
+     * element the containing block for its fixed descendants — so a modal
+     * opened from the admin chip was laying itself out inside the 218px
+     * sidebar instead of over the viewport.
+     */
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(20,15,10,0.45)] p-5"
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (foraLiur && e.target === e.currentTarget) onClose();
       }}
     >
       <div
@@ -55,8 +69,8 @@ export function Modal({
         style={{ maxWidth: larguraMax }}
         className="max-h-[88vh] w-full animate-pop overflow-auto rounded-[14px] border border-border bg-surface"
       >
-        <header className="flex items-center justify-between border-b border-border px-[18px] py-[14px]">
-          <div>
+        <header className="flex items-center justify-between gap-3 border-b border-border px-[18px] py-[14px]">
+          <div className="min-w-0">
             <h3 className="text-[15px]">{title}</h3>
             {subtitle ? (
               <small className="mt-[2px] block text-[12px] font-normal text-muted">
@@ -68,7 +82,7 @@ export function Modal({
             type="button"
             onClick={onClose}
             aria-label="Taka"
-            className="rounded-[6px] p-1 text-muted hover:bg-bg hover:text-text"
+            className="shrink-0 rounded-[6px] p-1 text-muted hover:bg-bg hover:text-text"
           >
             <IconTaka className="h-4 w-4" />
           </button>
@@ -82,6 +96,7 @@ export function Modal({
           </footer>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
