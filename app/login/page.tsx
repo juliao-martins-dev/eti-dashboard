@@ -20,9 +20,11 @@ export default function LoginPage() {
   const [erru, setErru] = useState<string | null>(null);
   const [haruka, setHaruka] = useState(false);
 
-  // Someone who is already signed in has no business on this screen.
+  // An administrator already signed in has no business on this screen. The
+  // role is checked here too, so a session stored before the gate existed
+  // cannot bounce a profesór into a dashboard that would 403 on every call.
   useEffect(() => {
-    if (sesaun) router.replace("/");
+    if (sesaun?.role === "ADMIN") router.replace("/");
   }, [sesaun, router]);
 
   async function tama(e: FormEvent) {
@@ -34,14 +36,9 @@ export default function LoginPage() {
 
     setHaruka(true);
     try {
-      const perfil = await login(email.trim(), password);
-      // Every screen behind the login calls an admin-only route; an account
-      // without EhAdmin would sign in and then hit 403 everywhere.
-      if (perfil.role !== "ADMIN") {
-        setErru("Konta ne'e la iha asesu ba painel administrasaun.");
-        setHaruka(false);
-        return;
-      }
+      // Turns away non-admins itself, before any token is stored, and says in
+      // Tetun which kind of account was refused.
+      await login(email.trim(), password);
       router.replace("/");
     } catch (e) {
       setErru(
@@ -72,7 +69,7 @@ export default function LoginPage() {
           </b>
           <span className="mt-[3px] flex items-center gap-[6px] text-[12px] text-muted">
             <i className="inline-block h-[7px] w-[7px] rounded-full bg-accent" />
-            Painel Administrasaun
+            Panel Administrasaun
           </span>
         </div>
 
