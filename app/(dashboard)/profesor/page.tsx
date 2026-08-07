@@ -52,6 +52,8 @@ export default function ProfesorPage() {
   /** The one-time password from a 201; the server keeps only its hash. */
   const [senha, setSenha] = useState<{ naran: string; password: string } | null>(null);
   const senhaRef = useRef<HTMLInputElement>(null);
+  /** Confirms the copy on the button itself; a toast alone is easy to miss. */
+  const [kopiaOk, setKopiaOk] = useState(false);
 
   const lista = useMemo(() => {
     const q = buka.trim().toLowerCase();
@@ -102,6 +104,7 @@ export default function ProfesorPage() {
         const kriadu = await aumentaProfesor(dadus);
         // Straight into the hand-over: closing without reading the password
         // means it is gone for good.
+        setKopiaOk(false);
         setSenha({ naran: kriadu.naran_kompletu, password: kriadu.password_inisial });
         setAlvu(null);
       } else if (alvu) {
@@ -120,15 +123,17 @@ export default function ProfesorPage() {
 
   async function kopiaSenha() {
     if (!senha) return;
-    // Select it either way: on the fallback path this is what the admin can
-    // then hit Ctrl+C on, and it makes the click feel like it did something.
-    senhaRef.current?.select();
+    // Nothing is selected up front: `kopia` needs the click's user activation
+    // intact, and it manages its own selection.
     const ok = await kopia(senha.password);
-    toast(
-      ok
-        ? "Password kopia ona ✓"
-        : "La bele kopia otomátiku — password hili ona, uza Ctrl+C",
-    );
+    setKopiaOk(ok);
+    if (ok) {
+      toast("Password kopia ona ✓");
+      return;
+    }
+    // Last resort — leave the password highlighted so Ctrl+C still works.
+    senhaRef.current?.select();
+    toast("La bele kopia otomátiku — password hili ona, uza Ctrl+C");
   }
 
   async function trokaAtivu(p: User) {
@@ -338,8 +343,8 @@ export default function ProfesorPage() {
             onFocus={(e) => e.currentTarget.select()}
             className="font-mono"
           />
-          <Button variant="ghost" onClick={kopiaSenha}>
-            Kopia
+          <Button variant="ghost" onClick={kopiaSenha} className="shrink-0">
+            {kopiaOk ? "Kopia ona ✓" : "Kopia"}
           </Button>
         </div>
         <Hint>
