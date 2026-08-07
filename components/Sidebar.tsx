@@ -13,6 +13,7 @@ import {
   IconRelatoriu,
   IconSai,
 } from "@/components/icons";
+import { KortaFotoModal } from "@/components/KortaFotoModal";
 import { Lightbox } from "@/components/ui/Lightbox";
 import { useToast } from "@/components/ui/Toast";
 import { mensajenErru } from "@/lib/api";
@@ -220,6 +221,8 @@ function UserChip() {
   const [abertu, setAbertu] = useState(false);
   const [haruka, setHaruka] = useState(false);
   const [lightbox, setLightbox] = useState(false);
+  /** Object URL of the picked file while it is being framed, else null. */
+  const [korta, setKorta] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const foneRef = useRef<HTMLInputElement>(null);
 
@@ -239,6 +242,14 @@ function UserChip() {
     };
   }, [abertu]);
 
+  // A picked file that is never framed — or one left open when the sidebar
+  // unmounts at logout — would otherwise hold its blob until the tab closes.
+  useEffect(() => {
+    return () => {
+      if (korta) URL.revokeObjectURL(korta);
+    };
+  }, [korta]);
+
   // Same gap as the nav items above, so the two icon columns line up.
   const item =
     "flex w-full items-center gap-[10px] rounded-[6px] px-[10px] py-[7px] text-left text-[12.5px] font-medium text-muted hover:bg-bg hover:text-text";
@@ -246,7 +257,8 @@ function UserChip() {
   // The profile cached at login; the guard sends you to /login without one.
   const naran = sesaun?.naran_kompletu ?? "…";
 
-  async function trokaFoto(e: ChangeEvent<HTMLInputElement>) {
+  /** Picking a file only opens the cropper; nothing is uploaded until framed. */
+  function hiliFoto(e: ChangeEvent<HTMLInputElement>) {
     const foto = e.target.files?.[0];
     // Clear it either way, so picking the same file again after a failure
     // still fires a change event.
@@ -262,9 +274,22 @@ function UserChip() {
       return;
     }
 
+    setAbertu(false);
+    setKorta(URL.createObjectURL(foto));
+  }
+
+  function takaKorta() {
+    setKorta((url) => {
+      if (url) URL.revokeObjectURL(url);
+      return null;
+    });
+  }
+
+  async function salvaFoto(foto: File) {
     setHaruka(true);
     try {
       await atualizaFoto(foto);
+      takaKorta();
       toast("Foto atualiza ona ✓");
     } catch (err) {
       toast(mensajenErru(err));
@@ -375,13 +400,22 @@ function UserChip() {
         />
       ) : null}
 
+      {korta ? (
+        <KortaFotoModal
+          src={korta}
+          haruka={haruka}
+          onKansela={takaKorta}
+          onProntu={salvaFoto}
+        />
+      ) : null}
+
       {/* Lives outside the menu so the picker survives the menu closing. */}
       <input
         ref={foneRef}
         type="file"
         accept="image/*"
         hidden
-        onChange={trokaFoto}
+        onChange={hiliFoto}
       />
     </div>
   );
