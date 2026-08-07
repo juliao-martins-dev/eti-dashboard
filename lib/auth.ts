@@ -4,11 +4,12 @@ import { useSyncExternalStore } from "react";
 import {
   ACCESS_KEY,
   api,
+  ApiErru,
   getRefresh,
   SESAUN_HOTU,
   setTokens,
 } from "./api";
-import type { User } from "./types";
+import type { Role, User } from "./types";
 
 /**
  * The signed-in administrator.
@@ -86,13 +87,45 @@ interface LoginResposta {
   user: User;
 }
 
-/** Throws `ApiErru` (401 on bad credentials, 403 if the account is not admin). */
+/**
+ * Why the account was turned away, in its own words. `role` comes back on the
+ * login response itself (`LoginSerializer` attaches `UserSerializer`), so this
+ * is decided without a second round trip.
+ */
+const SEM_ASESU: Partial<Record<Role, string>> = {
+  PROFESSOR:
+    "Ita boot hanesan profesór babain, la iha autorizasaun atu tama ba iha painel administrasaun.",
+  ESTUDANTE:
+    "Konta estudante la iha autorizasaun atu tama ba iha painel administrasaun.",
+};
+
+const SEM_ASESU_OMISAUN =
+  "Konta ne'e la iha autorizasaun atu tama ba iha painel administrasaun.";
+
+/**
+ * Throws `ApiErru`: 401 on bad credentials, 403 with code `la_admin` when the
+ * credentials are right but the account may not be here.
+ */
 export async function login(email: string, password: string): Promise<User> {
   const d = await api<LoginResposta>("/auth/login/", {
     method: "POST",
     auth: false,
     body: JSON.stringify({ email, password }),
   });
+
+  if (d.user.role !== "ADMIN") {
+    // Refused before a single token is stored or the profile published. A
+    // session that exists even for one render is one the /login redirect
+    // effect acts on — which would send the very account being turned away
+    // straight into the dashboard.
+    throw new ApiErru(
+      403,
+      SEM_ASESU[d.user.role] ?? SEM_ASESU_OMISAUN,
+      "la_admin",
+      { role: d.user.role },
+    );
+  }
+
   setTokens(d.access, d.refresh);
   publika(d.user);
   return d.user;
