@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import Image from "next/image";
 import { IconAntes, IconTaka, IconTuir } from "@/components/icons";
 
 export interface Imajen {
@@ -82,18 +81,30 @@ export function Lightbox({
       {/* Shrinks to the photo, so the caption tracks the image rather than
           floating at the bottom of the screen. */}
       <figure className="flex animate-pop flex-col items-center gap-3">
-        <div className="relative h-[68vh] w-[86vw] max-w-[680px] overflow-hidden rounded-[14px] bg-white/5 ring-1 ring-white/15 shadow-[0_24px_70px_rgba(0,0,0,0.55)]">
-          <Image
-            key={atual.src}
-            src={atual.src}
-            alt={atual.naran ?? "Foto"}
-            fill
-            unoptimized
-            sizes="(min-width: 680px) 680px, 86vw"
-            className="object-contain"
-            priority
-          />
-        </div>
+        {/*
+         * A plain <img> with only max-* bounds, so the frame *is* the photo:
+         * the browser sizes a replaced element from its own aspect ratio, and
+         * the ring and shadow land on that edge.
+         *
+         * It used to be a fixed 680×68vh box with the image object-contain
+         * inside, which letterboxed anything not that shape — an avatar comes
+         * back square from the cropper, so it sat between two wide bars of the
+         * frame's own background.
+         *
+         * next/image is no loss here: these are absolute URLs on whichever
+         * host serves eti-api, so it was already `unoptimized`, and `fill`
+         * is precisely what forced the fixed box.
+         */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          key={atual.src}
+          src={atual.src}
+          alt={atual.naran ?? "Foto"}
+          decoding="async"
+          // Bounded, never stretched: capping with max-* alone lets a small
+          // photo stay at its own size rather than being blown up soft.
+          className="max-h-[78vh] max-w-[86vw] rounded-[14px] bg-white/5 shadow-[0_24px_70px_rgba(0,0,0,0.55)] ring-1 ring-white/15"
+        />
 
         {atual.naran ? (
           <figcaption className="max-w-[86vw] truncate text-center text-[13px] font-medium text-white/85">
