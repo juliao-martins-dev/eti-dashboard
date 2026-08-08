@@ -26,7 +26,7 @@ const FOTO_MAX = 5 * 1024 * 1024;
 // Konfigurasaun is deliberately absent: it lives in the admin chip menu at the
 // foot of the sidebar, next to logout, rather than beside the daily screens.
 const NAV = [
-  { href: "/", label: "Painel", Icon: IconPainel },
+  { href: "/", label: "Panel", Icon: IconPainel },
   { href: "/profesor", label: "Profesór sira", Icon: IconProfesor },
   { href: "/prezensa", label: "Prezensa", Icon: IconPrezensa },
   { href: "/relatoriu", label: "Relatóriu", Icon: IconRelatoriu },
@@ -174,7 +174,7 @@ export function Sidebar({
           </b>
           <span className="mt-[3px] flex items-center gap-[6px] text-[11px] text-muted">
             <i className="inline-block h-[7px] w-[7px] shrink-0 rounded-full bg-accent" />
-            Painel Administrasaun
+            Panel Administrasaun
           </span>
         </div>
       </div>
