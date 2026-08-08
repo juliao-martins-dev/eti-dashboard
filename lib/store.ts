@@ -2,7 +2,13 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { api, mensajenErru } from "./api";
-import type { ProfesorFoun, ProfesorKriadu, ProfesorPatch, User } from "./types";
+import type {
+  ProfesorFoun,
+  ProfesorKriadu,
+  ProfesorPatch,
+  ResetPasswordResposta,
+  User,
+} from "./types";
 
 /**
  * The teacher roster, `GET /api/profesor/`.
@@ -81,7 +87,7 @@ export async function aumentaProfesor(dadus: ProfesorFoun): Promise<ProfesorKria
   return kriadu;
 }
 
-/** Deactivation is `{is_active: false}` — there is no DELETE, sheets refer to the account. */
+/** Deactivation is `{is_active: false}` — reversible, and it keeps the sheets. */
 export async function atualizaProfesor(
   id: number,
   dadus: ProfesorPatch,
@@ -92,4 +98,38 @@ export async function atualizaProfesor(
   });
   await karegaProfesor(true);
   return foun;
+}
+
+/**
+ * Remove a teacher for good: the account and, by CASCADE, every sheet, day,
+ * punch and photo. Irreversible — the caller confirms with their own password,
+ * which the server verifies (the two fields in the modal are friction for the
+ * person, not the check).
+ */
+export async function hamosProfesor(id: number, password: string): Promise<void> {
+  await api<void>(`/profesor/${id}/`, {
+    method: "DELETE",
+    body: JSON.stringify({ password }),
+  });
+  await karegaProfesor(true);
+}
+
+/**
+ * Set a new password for a teacher who lost theirs. Both copies travel and the
+ * server compares them, so the form check is not the only one.
+ *
+ * Every session that teacher had open is revoked — `sesaun_taka` says how many.
+ */
+export async function resetPasswordProfesor(
+  id: number,
+  passwordFoun: string,
+  passwordKonfirma: string,
+): Promise<ResetPasswordResposta> {
+  return api<ResetPasswordResposta>(`/profesor/${id}/reset-password/`, {
+    method: "POST",
+    body: JSON.stringify({
+      password_foun: passwordFoun,
+      password_konfirma: passwordKonfirma,
+    }),
+  });
 }
