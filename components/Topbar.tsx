@@ -6,7 +6,7 @@ import { dataKompletu } from "@/lib/format";
 import { useOhin } from "@/lib/ohin";
 
 const TITULU: Record<string, [string, string]> = {
-  "/": ["Painel", "Rezumu prezensa ohin loron — ETI Dili"],
+  "/": ["Panel", "Rezumu prezensa ohin loron — ETI Dili"],
   "/profesor": ["Profesór sira", "Konta sira ne'ebé uza aplikasaun ETI PREZENSA"],
   "/prezensa": ["Prezensa", "Lista prezensa ho evidénsia marka"],
   "/relatoriu": ["Relatóriu", "Rezumu prezensa tuir períodu"],
