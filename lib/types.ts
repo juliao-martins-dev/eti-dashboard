@@ -276,3 +276,11 @@ export interface ListaPrezensa {
   tinan: number;
   prezensa: Prezensa[];
 }
+
+/** `POST /api/profesor/{id}/reset-password/` — 200. */
+export interface ResetPasswordResposta {
+  detail: string;
+  /** How many of the teacher's open sessions were revoked by the reset. */
+  sesaun_taka: number;
+  profesor: User;
+}
