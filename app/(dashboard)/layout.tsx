@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Topbar } from "@/components/Topbar";
-import { logout, useSesaun } from "@/lib/auth";
+import { karegaPerfil, logout, useSesaun } from "@/lib/auth";
 
 export default function DashboardLayout({
   children,
@@ -37,6 +37,24 @@ export default function DashboardLayout({
       void logout().finally(() => router.replace("/login"));
     }
   }, [sesaun, router]);
+
+  // Refresh the cached profile once per document load.
+  //
+  // The copy in localStorage is only written at login and when the photo is
+  // replaced, so reopening the tab on a still-valid token rendered whatever
+  // was stored last — including a `foto` URL the server had since replaced,
+  // which is why the admin's picture kept coming back broken. Painting from
+  // the cache first is the point; this just makes it correct a moment later.
+  useEffect(() => {
+    if (!sesaun) return;
+    void karegaPerfil().catch(() => {
+      // Offline or a dead token: the cached profile stays on screen and the
+      // api layer already sends a genuinely expired session to /login.
+    });
+    // Once per mount, not on every profile change — publishing the fetched
+    // profile updates `sesaun` and would otherwise loop.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="flex min-h-screen">
