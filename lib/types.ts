@@ -54,7 +54,7 @@ export type DataOras = string;
 /** The `code` on a 400 from a punch or a bad period. */
 export type ErruKode =
   | "duplicate"
-  | "no_clock_in"
+  | "no_checkin"
   | "no_session"
   | "dook_husi_eskola"
   | "invalid_period"
@@ -138,8 +138,8 @@ export interface PrezensaOhin extends Prezensa {
   sesaun: Sesaun;
   oras_tama: Oras | null;
   oras_fila: Oras | null;
-  bele_clock_in: boolean;
-  bele_clock_out: boolean;
+  bele_checkin: boolean;
+  bele_checkout: boolean;
 }
 
 /**
