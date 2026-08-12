@@ -197,6 +197,21 @@ export interface StatusRejistuResposta {
   total: number;
 }
 
+/**
+ * `200` from `POST /api/auth/troka-password/`.
+ *
+ * The pair matters as much as the message: changing the password blacklists
+ * every refresh token the account had, the caller's included, so these are the
+ * replacements and must be stored or the next refresh fails.
+ */
+export interface TrokaPasswordResposta {
+  detail: string;
+  /** How many other sessions were signed out. */
+  sesaun_taka: number;
+  access: string;
+  refresh: string;
+}
+
 /** `GET /api/konfig/` — the schedule and geofence, read-only. */
 export interface Opsaun {
   value: string;
