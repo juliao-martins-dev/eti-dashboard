@@ -641,9 +641,8 @@ export default function ProfesorPage() {
 
         <div className="mt-4">
           <Field label="Password admin" htmlFor="fSenha1">
-            <input
+            <PasswordInput
               id="fSenha1"
-              type="password"
               autoComplete="current-password"
               value={senha1}
               onChange={(e) => setSenha1(e.target.value)}
@@ -653,9 +652,8 @@ export default function ProfesorPage() {
         </div>
 
         <Field label="Konfirma password" htmlFor="fSenha2">
-          <input
+          <PasswordInput
             id="fSenha2"
-            type="password"
             autoComplete="current-password"
             value={senha2}
             onChange={(e) => setSenha2(e.target.value)}
