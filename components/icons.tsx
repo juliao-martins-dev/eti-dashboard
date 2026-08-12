@@ -181,6 +181,22 @@ export function IconTuir({ className }: IconProps) {
   );
 }
 
+/**
+ * The sort affordance. Both arrows show faintly until a column is the active
+ * one, so every sortable header says it is sortable before being clicked.
+ */
+export function IconOrdena({
+  className,
+  dir,
+}: IconProps & { dir?: "asc" | "desc" }) {
+  return (
+    <svg {...base} strokeWidth={2.4} className={className} aria-hidden="true">
+      <path d="M7 15l5 5 5-5" opacity={dir === undefined || dir === "desc" ? 1 : 0.25} />
+      <path d="M7 9l5-5 5 5" opacity={dir === undefined || dir === "asc" ? 1 : 0.25} />
+    </svg>
+  );
+}
+
 export function IconMatan({ className }: IconProps) {
   return (
     <svg {...base} className={className} aria-hidden="true">
