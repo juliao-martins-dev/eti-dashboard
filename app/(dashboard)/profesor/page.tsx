@@ -21,14 +21,18 @@ import {
   NameCell,
   Td,
   Th,
+  ThOrdena,
+  type Dir,
 } from "@/components/ui/DataTable";
 import { Field, Hint, Row2 } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
+import { Pagination } from "@/components/ui/Pagination";
 import { Panel } from "@/components/ui/Panel";
 import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useToast } from "@/components/ui/Toast";
 import { ApiErru, mensajenErru } from "@/lib/api";
 import { kopia } from "@/lib/kopia";
+import { usePajina } from "@/lib/pajina";
 import {
   aumentaProfesor,
   atualizaProfesor,
@@ -66,6 +70,31 @@ const FORM_VAZIU: Form = {
 /** null = closed · "foun" = create · a User = edit that account. */
 type Alvu = null | "foun" | User;
 
+/** The sortable columns, by what they sort on rather than by their header. */
+type Kampu = "naran" | "numeru" | "kargu" | "status";
+
+/**
+ * Locale-aware, and that matters here: half the roster carries á/é/ó/ú, and a
+ * plain `<` sorts by code point, which files every accented letter after "z" —
+ * "Ximenes" would come before "Álvaro". `numeric` also keeps "Sala 2" ahead of
+ * "Sala 10" in the free-text columns.
+ */
+const kolator = new Intl.Collator("pt", { sensitivity: "base", numeric: true });
+
+function kompara(a: User, b: User, kampu: Kampu): number {
+  switch (kampu) {
+    case "numeru":
+      return a.numeru_id - b.numeru_id;
+    case "kargu":
+      return kolator.compare(a.kargu ?? "", b.kargu ?? "");
+    case "status":
+      // Active first when ascending; the roster is read to find who is live.
+      return Number(b.is_active ?? true) - Number(a.is_active ?? true);
+    default:
+      return kolator.compare(a.naran_kompletu, b.naran_kompletu);
+  }
+}
+
 export default function ProfesorPage() {
   const toast = useToast();
   const { profesor, karega, erru } = useProfesor();
@@ -93,6 +122,11 @@ export default function ProfesorPage() {
    */
   const [hatudu, setHatudu] = useState(false);
 
+  const [ordena, setOrdena] = useState<{ kampu: Kampu; dir: Dir }>({
+    kampu: "naran",
+    dir: "asc",
+  });
+
   const lista = useMemo(() => {
     const q = buka.trim().toLowerCase();
     if (!q) return profesor;
@@ -102,6 +136,32 @@ export default function ProfesorPage() {
         .includes(q),
     );
   }, [profesor, buka]);
+
+  const ordenadu = useMemo(() => {
+    const sinal = ordena.dir === "asc" ? 1 : -1;
+    // Copied first: the roster array is shared state, and sort mutates.
+    return [...lista].sort((a, b) => {
+      const r = sinal * kompara(a, b, ordena.kampu);
+      // Name breaks every tie, so equal kargu or equal status still comes out
+      // in a stable, readable order rather than in fetch order.
+      return r !== 0 || ordena.kampu === "naran"
+        ? r
+        : kolator.compare(a.naran_kompletu, b.naran_kompletu);
+    });
+  }, [lista, ordena]);
+
+  const pajina = usePajina(ordenadu, {
+    chave: `${buka}|${ordena.kampu}|${ordena.dir}`,
+  });
+
+  /** Same column flips direction; a new column starts ascending. */
+  function trokaOrdena(kampu: Kampu) {
+    setOrdena((o) =>
+      o.kampu === kampu
+        ? { kampu, dir: o.dir === "asc" ? "desc" : "asc" }
+        : { kampu, dir: "asc" },
+    );
+  }
 
   function abre(a: Exclude<Alvu, null>) {
     setForm(
@@ -306,12 +366,38 @@ export default function ProfesorPage() {
         <DataTable>
           <thead>
             <tr>
-              <Th>Profesór</Th>
-              <Th>Nu. ID</Th>
-              <Th>Kargu</Th>
+              {/* Only the columns worth ordering by: the qualification pair
+                  and the phone number have no order anyone reads them in. */}
+              <ThOrdena
+                ativu={ordena.kampu === "naran"}
+                dir={ordena.dir}
+                onOrdena={() => trokaOrdena("naran")}
+              >
+                Profesór
+              </ThOrdena>
+              <ThOrdena
+                ativu={ordena.kampu === "numeru"}
+                dir={ordena.dir}
+                onOrdena={() => trokaOrdena("numeru")}
+              >
+                Nu. ID
+              </ThOrdena>
+              <ThOrdena
+                ativu={ordena.kampu === "kargu"}
+                dir={ordena.dir}
+                onOrdena={() => trokaOrdena("kargu")}
+              >
+                Kargu
+              </ThOrdena>
               <Th>Habilitasaun literária</Th>
               <Th>Kontaktu</Th>
-              <Th>Status konta</Th>
+              <ThOrdena
+                ativu={ordena.kampu === "status"}
+                dir={ordena.dir}
+                onOrdena={() => trokaOrdena("status")}
+              >
+                Status konta
+              </ThOrdena>
             </tr>
           </thead>
           <tbody>
@@ -319,8 +405,8 @@ export default function ProfesorPage() {
               <EmptyRow colSpan={6}>{erru}</EmptyRow>
             ) : karega ? (
               <EmptyRow colSpan={6}>Karega dadus…</EmptyRow>
-            ) : lista.length ? (
-              lista.map((p) => {
+            ) : pajina.fatia.length ? (
+              pajina.fatia.map((p) => {
                 const ativu = p.is_active ?? true;
                 return (
                   <ClickRow key={p.id} onOpen={() => abre(p)}>
@@ -360,6 +446,7 @@ export default function ProfesorPage() {
             )}
           </tbody>
         </DataTable>
+        {erru || karega ? null : <Pagination pajina={pajina} naran="profesór" />}
       </Panel>
 
       <Modal
