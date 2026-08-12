@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { IconOrdena } from "@/components/icons";
 import { cx } from "@/lib/cx";
 
 export function DataTable({
@@ -46,6 +47,56 @@ export function Th({
           {sub}
         </small>
       ) : null}
+    </th>
+  );
+}
+
+export type Dir = "asc" | "desc";
+
+/**
+ * A header that sorts its column.
+ *
+ * The button sits inside the cell's own padding rather than replacing it, so
+ * a sortable header lines up exactly with a plain one — the arrows are the
+ * only visible difference between the two.
+ *
+ * `aria-sort` goes on the th, where a screen reader looks for it; the button
+ * carries only the action.
+ */
+export function ThOrdena({
+  children,
+  ativu,
+  dir,
+  onOrdena,
+  className,
+}: {
+  children?: ReactNode;
+  /** Whether this is the column currently sorted. */
+  ativu: boolean;
+  dir: Dir;
+  onOrdena: () => void;
+  className?: string;
+}) {
+  return (
+    <th
+      aria-sort={ativu ? (dir === "asc" ? "ascending" : "descending") : "none"}
+      className={cx(
+        "border-b border-border px-[14px] py-[9px] text-left text-[11px] font-semibold tracking-[0.05em] whitespace-nowrap uppercase",
+        ativu ? "text-text" : "text-muted",
+        className,
+      )}
+    >
+      <button
+        type="button"
+        onClick={onOrdena}
+        className="flex items-center gap-[6px] [font:inherit] uppercase hover:text-accent"
+      >
+        {children}
+        <IconOrdena
+          dir={ativu ? dir : undefined}
+          className={cx("h-[11px] w-[11px] shrink-0", ativu ? "opacity-100" : "opacity-45")}
+        />
+      </button>
     </th>
   );
 }
