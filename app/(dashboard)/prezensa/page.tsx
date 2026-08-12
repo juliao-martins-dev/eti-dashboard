@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/DataTable";
 import { Field, Hint, Row2 } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
+import { Pagination } from "@/components/ui/Pagination";
 import { Empty, Panel } from "@/components/ui/Panel";
 import { PunchChip } from "@/components/ui/PunchChip";
 import { useToast } from "@/components/ui/Toast";
@@ -32,6 +33,7 @@ import {
   ORARIU,
 } from "@/lib/format";
 import { useOhin } from "@/lib/ohin";
+import { usePajina } from "@/lib/pajina";
 import type { Filtru, Periodu } from "@/lib/periodu";
 import { hasaiStatus, rejistuStatus, useHotu } from "@/lib/prezensa";
 import { useProfesor } from "@/lib/store";
@@ -104,6 +106,9 @@ function Prezensa({ ohin }: { ohin: Data }) {
 
   const linha = dadus?.profesor ?? [];
   const komProfesor = filtru.who === "hotu";
+  // Keyed on the filter: changing period or teacher answers a new question,
+  // and the answer starts at its own first row.
+  const pajina = usePajina(linha, { chave: JSON.stringify(filtru) });
 
   function abreLisensa(inisial?: Partial<StatusRejistu>) {
     setKonflitu(null);
@@ -188,8 +193,8 @@ function Prezensa({ ohin }: { ohin: Data }) {
               <EmptyRow colSpan={komProfesor ? 7 : 6}>{erru}</EmptyRow>
             ) : karega ? (
               <EmptyRow colSpan={komProfesor ? 7 : 6}>Karega dadus…</EmptyRow>
-            ) : linha.length ? (
-              linha.map((r) => {
+            ) : pajina.fatia.length ? (
+              pajina.fatia.map((r) => {
                 const p = r.prezensa;
                 const d = dataDate(r.data);
                 const sabadu = d.getDay() === 6;
@@ -249,6 +254,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
             )}
           </tbody>
         </DataTable>
+        {erru || karega ? null : <Pagination pajina={pajina} naran="liña" />}
       </Panel>
 
       {detalle ? (
