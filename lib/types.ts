@@ -17,6 +17,8 @@ export type Sexu = "MANE" | "FETO";
 export type NivelEdukasaun =
   | "ENSINU_SEKUNDARIU"
   | "DIPLOMA"
+  | "FINALISTA"
+  | "UNIVERSITARIA"
   | "BACHARELATU"
   | "LICENCIADO"
   | "POST_GRADUACAO"
@@ -75,6 +77,9 @@ export interface User {
   foto: string | null;
   role: Role;
   role_display: string;
+
+  /** The Tetun label for `nivel_edukasaun`, ready to print. */
+  nivel_edukasaun_display?: string;
 
   sexu?: Sexu | "";
   habilitasaun_literaria?: string;
@@ -193,6 +198,11 @@ export interface StatusRejistuResposta {
 }
 
 /** `GET /api/konfig/` — the schedule and geofence, read-only. */
+export interface Opsaun {
+  value: string;
+  label: string;
+}
+
 export interface KonfigSistema {
   oras_dader_tama: Oras;
   oras_dader_fila: Oras;
@@ -201,6 +211,10 @@ export interface KonfigSistema {
   limite_sesaun: Oras;
   eskola_raiu_metru: number;
   eskola_obriga_fatin: boolean;
+  /** Roster picklists, so the forms do not hardcode what the server owns. */
+  nivel_edukasaun: Opsaun[];
+  area_estudu_sujere: string[];
+  sexu: Opsaun[];
 }
 
 /** `POST /api/profesor/` body; `PATCH` takes any subset plus `is_active`. */
@@ -211,6 +225,10 @@ export interface ProfesorFoun {
   kargu?: string;
   nu_kontaktu?: string;
   sexu?: Sexu;
+  /** HABILITASAUN LITERÁRIA on the paper roster is a heading over these two. */
+  nivel_edukasaun?: NivelEdukasaun | "";
+  area_estudu?: string;
+  disiplina_hanorin?: string;
 }
 
 export type ProfesorPatch = Partial<ProfesorFoun> & { is_active?: boolean };
