@@ -1,12 +1,21 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
+import { IconXave } from "@/components/icons";
 import { Button } from "@/components/ui/Button";
-import { Field } from "@/components/ui/Field";
+import { Field, Hint } from "@/components/ui/Field";
 import { Grid2, Panel, PanelTitle } from "@/components/ui/Panel";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { Seg } from "@/components/ui/Seg";
 import { useToast } from "@/components/ui/Toast";
-import { apiAlternativa, setApiBase, useApiBase } from "@/lib/api";
+import {
+  apiAlternativa,
+  ApiErru,
+  mensajenErru,
+  setApiBase,
+  useApiBase,
+} from "@/lib/api";
+import { trokaPassword } from "@/lib/auth";
 import { cx } from "@/lib/cx";
 import { oras } from "@/lib/format";
 import { useKonfig } from "@/lib/prezensa";
@@ -131,7 +140,163 @@ export default function KonfigPage() {
           )}
         </div>
       </Panel>
+      <TrokaPasswordKard />
     </Grid2>
+  );
+}
+
+/**
+ * The signed-in administrator changes their own password.
+ *
+ * This is the only route by which an admin can change a password at all — the
+ * roster's reset refuses both `rasik` (yourself) and `eh_admin` (another
+ * admin) — so without this card an administrator who wanted a new password
+ * had nowhere to go.
+ */
+function TrokaPasswordKard() {
+  const toast = useToast();
+  const [tuan, setTuan] = useState("");
+  const [foun, setFoun] = useState("");
+  const [konfirma, setKonfirma] = useState("");
+  const [haruka, setHaruka] = useState(false);
+  const [erru, setErru] = useState<string | null>(null);
+  /** Django's validator messages, already user-readable and already Tetun. */
+  const [erros, setErros] = useState<string[]>([]);
+
+  const laHanesan = konfirma.length > 0 && foun !== konfirma;
+  const hanesanTuan = foun.length > 0 && foun === tuan;
+  const prontu =
+    tuan.length > 0 && foun.length > 0 && !laHanesan && !hanesanTuan;
+
+  function limpa() {
+    setErru(null);
+    setErros([]);
+  }
+
+  async function submete(e: FormEvent) {
+    e.preventDefault();
+    if (!prontu || haruka) return;
+
+    setHaruka(true);
+    limpa();
+    try {
+      // Persists the fresh token pair itself; the session survives the change.
+      const d = await trokaPassword(tuan, foun, konfirma);
+      setTuan("");
+      setFoun("");
+      setKonfirma("");
+      toast(
+        d.sesaun_taka > 0
+          ? `Password troka ona ✓ — sesaun ${d.sesaun_taka} taka`
+          : "Password troka ona ✓",
+      );
+    } catch (e) {
+      if (e instanceof ApiErru && e.code === "password_fraku") {
+        // Every reason the password was refused, not just the first.
+        const lista = e.corpo.erros;
+        setErros(Array.isArray(lista) ? (lista as string[]) : []);
+      }
+      setErru(mensajenErru(e));
+      // Only the wrong field is cleared: retyping a long new password because
+      // the *old* one was mistyped is the kind of thing that makes people
+      // give up on changing it at all.
+      if (e instanceof ApiErru && e.code === "password_tuan_sala") setTuan("");
+    } finally {
+      setHaruka(false);
+    }
+  }
+
+  return (
+    <Panel>
+      <PanelTitle>
+        Seguransa
+        <span className="text-[11px] font-normal text-muted">konta rasik</span>
+      </PanelTitle>
+
+      <form onSubmit={submete} className="flex flex-col gap-[14px] p-4">
+        <Field label="Password tuan" htmlFor="kTuan">
+          <PasswordInput
+            id="kTuan"
+            autoComplete="current-password"
+            value={tuan}
+            onChange={(e) => {
+              setTuan(e.target.value);
+              limpa();
+            }}
+            placeholder="Hatama password atuál"
+          />
+        </Field>
+
+        <Field label="Password foun" htmlFor="kFoun">
+          <PasswordInput
+            id="kFoun"
+            autoComplete="new-password"
+            value={foun}
+            onChange={(e) => {
+              setFoun(e.target.value);
+              limpa();
+            }}
+            placeholder="Hatama password foun"
+          />
+        </Field>
+
+        <Field label="Konfirma password foun" htmlFor="kKonfirma">
+          <PasswordInput
+            id="kKonfirma"
+            autoComplete="new-password"
+            value={konfirma}
+            onChange={(e) => {
+              setKonfirma(e.target.value);
+              limpa();
+            }}
+            placeholder="Hatama fila fali"
+          />
+        </Field>
+
+        {/* Said before the request, so the button never looks simply broken. */}
+        {laHanesan ? (
+          <p className="-mt-[6px] text-[12.5px] text-bad">
+            Password foun rua la hanesan
+          </p>
+        ) : hanesanTuan ? (
+          <p className="-mt-[6px] text-[12.5px] text-bad">
+            Password foun tenke la hanesan ho password tuan
+          </p>
+        ) : null}
+
+        {erru ? (
+          <div
+            role="alert"
+            className="rounded-[8px] border border-[color-mix(in_srgb,var(--color-bad)_40%,transparent)] bg-[color-mix(in_srgb,var(--color-bad)_9%,transparent)] px-[11px] py-[9px] text-[12px] font-medium text-bad"
+          >
+            {erros.length > 0 ? (
+              <ul className="flex list-disc flex-col gap-[3px] pl-4">
+                {erros.map((m) => (
+                  <li key={m}>{m}</li>
+                ))}
+              </ul>
+            ) : (
+              erru
+            )}
+          </div>
+        ) : null}
+
+        <Hint>
+          Troka password sei taka sesaun hotu-hotu iha aparellu seluk. Iha ekrán
+          ne&apos;e ita kontinua tama.
+        </Hint>
+
+        <Button
+          type="submit"
+          tone="info"
+          disabled={!prontu || haruka}
+          className="self-start"
+        >
+          <IconXave />
+          {haruka ? "Troka…" : "Troka password"}
+        </Button>
+      </form>
+    </Panel>
   );
 }
 
