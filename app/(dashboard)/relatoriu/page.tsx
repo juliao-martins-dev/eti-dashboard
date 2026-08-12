@@ -13,12 +13,14 @@ import {
   Td,
   Th,
 } from "@/components/ui/DataTable";
+import { Pagination } from "@/components/ui/Pagination";
 import { Empty, Panel } from "@/components/ui/Panel";
 import { StatCard, StatCards } from "@/components/ui/StatCard";
 import { useToast } from "@/components/ui/Toast";
 import { mensajenErru } from "@/lib/api";
 import { dataDate } from "@/lib/format";
 import { useOhin } from "@/lib/ohin";
+import { usePajina } from "@/lib/pajina";
 import type { Filtru } from "@/lib/periodu";
 import { useRelatoriu, type Relatoriu } from "@/lib/relatoriu";
 import type { Data } from "@/lib/types";
@@ -52,6 +54,7 @@ function RelatoriuView({ ohin }: { ohin: Data }) {
 
   const { dadus, karega, erru } = useRelatoriu(filtru);
   const agg = dadus?.rezumu ?? [];
+  const pajina = usePajina(agg, { chave: JSON.stringify(filtru) });
 
   const tot = (k: "serv" | "prez" | "atraz" | "falta" | "lis" | "mis") =>
     agg.reduce((s, a) => s + a[k], 0);
@@ -156,8 +159,8 @@ function RelatoriuView({ ohin }: { ohin: Data }) {
                   ? "Karega tinan tomak — hein uitoan…"
                   : "Karega dadus…"}
               </EmptyRow>
-            ) : agg.length ? (
-              agg.map((a) => (
+            ) : pajina.fatia.length ? (
+              pajina.fatia.map((a) => (
                 <ClickRow key={a.profesor.id} onOpen={() => loke(a.profesor.id)}>
                   <Td>
                     <NameCell
@@ -181,6 +184,9 @@ function RelatoriuView({ ohin }: { ohin: Data }) {
             )}
           </tbody>
         </DataTable>
+        {/* The cards above and both exports stay on the whole period — only
+            the table is paged, so a percentage never counts five teachers. */}
+        {erru || karega ? null : <Pagination pajina={pajina} naran="profesór" />}
       </Panel>
     </>
   );
