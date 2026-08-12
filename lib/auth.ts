@@ -9,7 +9,7 @@ import {
   SESAUN_HOTU,
   setTokens,
 } from "./api";
-import type { Role, User } from "./types";
+import type { Role, TrokaPasswordResposta, User } from "./types";
 
 /**
  * The signed-in administrator.
@@ -146,6 +146,37 @@ export async function logout(): Promise<void> {
   }
   setTokens(null, null);
   publika(null);
+}
+
+/**
+ * Change the signed-in account's own password.
+ *
+ * The only route by which an administrator can change a password at all: the
+ * roster's `reset-password` refuses `rasik` (yourself) and `eh_admin`
+ * (another admin). It demands the old password on purpose — a borrowed
+ * unlocked browser must not be enough to take the account.
+ *
+ * Storing the returned pair is not optional. The server blacklists *every*
+ * refresh token for the account, the caller's included, and hands back a
+ * fresh pair in the body precisely so the admin is not thrown to /login in
+ * the middle of the action. Skip this and the session dies at the next
+ * refresh, up to fifteen minutes later, far from the cause.
+ */
+export async function trokaPassword(
+  passwordTuan: string,
+  passwordFoun: string,
+  passwordKonfirma: string,
+): Promise<TrokaPasswordResposta> {
+  const d = await api<TrokaPasswordResposta>("/auth/troka-password/", {
+    method: "POST",
+    body: JSON.stringify({
+      password_tuan: passwordTuan,
+      password_foun: passwordFoun,
+      password_konfirma: passwordKonfirma,
+    }),
+  });
+  setTokens(d.access, d.refresh);
+  return d;
 }
 
 /** Re-reads the profile from the server, e.g. after a role change. */
