@@ -1,8 +1,11 @@
 # eti-dashboard × eti-api — Integration Reference
 
 Every endpoint the admin dashboard needs, with real request/response shapes,
-read from the implemented code (`accounts/`, `attendance/`). This is the
-contract for swapping `lib/mock-data.ts` out of `lib/store.ts`.
+read from the implemented code (`accounts/`, `attendance/`).
+
+**The dashboard is fully wired to this API** — all six routes run on live data.
+This document is now the reference for changing that integration, and the
+contract any other client should follow. Last verified **2026-08-12**.
 
 Base URL: `<API_HOST>/api/` — **every path ends with a trailing slash**.
 Without it Django 301-redirects, the POST body is dropped, and the request
@@ -23,6 +26,8 @@ dashboard never calls those).
 | POST | `auth/logout/` | `{refresh}` (Bearer required) | 205 `{detail}` |
 | POST | `auth/verify/` | `{token}` | 200 / 401 |
 | GET | `auth/me/` | — | the profile (sidebar chip) |
+| PATCH | `auth/me/` | multipart `foto` | replace your own photo |
+| POST | `auth/troka-password/` | `{password_tuan, password_foun, password_konfirma}` | change **your own** password — see §1.1 |
 
 `user` / `me` shape:
 
@@ -45,22 +50,89 @@ Rules the client must implement:
 - Admin-only routes below need an account with `is_staff=True` **or**
   `role="ADMIN"` — otherwise `403`.
 
+### 1.1 Change your own password — `POST /api/auth/troka-password/`
+
+For whoever is signed in, teacher or admin. **This is the only way an
+administrator can change a password at all**: the roster's `reset-password`
+refuses `rasik` (yourself) and `eh_admin` (another admin).
+
+```json
+{
+  "password_tuan": "SenhaTuan-2026",
+  "password_foun": "SenhaFoun-2026",
+  "password_konfirma": "SenhaFoun-2026"
+}
+```
+
+All three are required. It asks for the **old** password — unlike the admin
+reset, which cannot, since an admin resetting a forgotten password never knows
+it. Here the caller is changing their own credentials, so a borrowed unlocked
+browser must not be enough to take the account.
+
+**200**
+
+```json
+{
+  "detail": "Password troka ho susesu.",
+  "sesaun_taka": 2,
+  "access": "eyJhbGciOi…",
+  "refresh": "eyJhbGciOi…"
+}
+```
+
+| Code | `code` | When |
+| --- | --- | --- |
+| `200` | — | Changed |
+| `400` | `password_presiza` | A field is missing |
+| `400` | `password_la_hanesan` | `password_foun` ≠ `password_konfirma` |
+| `400` | `password_hanesan_tuan` | The new password equals the old one |
+| `400` | `password_fraku` + `erros[]` | Django's validators refused it |
+| `403` | `password_tuan_sala` | The old password is wrong |
+| `401` | — | Not signed in |
+
+**Two things the client must do:**
+
+1. **Store the returned `access` and `refresh`.** The change blacklists *every*
+   refresh token for that account — `sesaun_taka` counts them — so the pair you
+   were holding is dead. A fresh pair comes back in the body precisely so the
+   dashboard does not bounce the admin to `/login` in the middle of the action.
+   Persist both exactly as you do after `auth/refresh/`.
+2. Other devices are signed out, which is the point: this is what someone does
+   after losing a phone.
+
+The new password is **never** echoed back — the caller typed it.
+
 ## 2. Teacher roster — `/api/profesor/` (admin)
 
 ### `GET /api/profesor/`
 
 Plain array (no pagination envelope), ordered by `naran_kompletu`,
 **deactivated accounts included** — filter/badge client-side on `is_active`.
-Only `role=PROFESSOR` accounts appear; admins are not listed.
+
+**Since 2026-08-07 the roster lists `PROFESSOR` *and* `ADMIN` accounts**, so it
+agrees with `ohin-hotu` / `hotu` / `istoria`, which always covered both. Badge
+admins from `role` / `role_display` and hide the destructive buttons on those
+rows — the API refuses `DELETE` and `reset-password` for them (`eh_admin`).
 
 ```json
 [{
   "id": 3, "numeru_id": 1015, "email": "ana@eti-dili.tl",
   "naran_kompletu": "Ana Paula Ximenes", "kargu": "Profesóra Matemátika",
   "foto": null, "role": "PROFESSOR", "role_display": "Professór",
-  "sexu": "FETO", "nu_kontaktu": "+670 7810 3345", "is_active": true
+  "sexu": "FETO", "nu_kontaktu": "+670 7810 3345", "is_active": true,
+  "nivel_edukasaun": "LICENCIADO", "nivel_edukasaun_display": "Licenciado",
+  "area_estudu": "Gestão Informática",
+  "disiplina_hanorin": "Sistema Base de Dados & Tec. Multimedia"
 }]
 ```
+
+**HABILITASAUN LITERÁRIA** on the printed roster is a heading spanning two
+columns, not a column of its own — so it arrives as the pair
+`nivel_edukasaun` + `area_estudu`. `nivel_edukasaun` is a closed set (render a
+`<select>` from `konfig.nivel_edukasaun`); `area_estudu` is **free text**
+(render an `<input list=…>` from `konfig.area_estudu_sujere`) because the
+school's own sheet spells some areas more than one way and new areas appear.
+All three are writable through POST and PATCH.
 
 Use it to join `nu_kontaktu` into the Painel "seidauk marka" list and to fill
 the teacher `<select>` on Prezensa/Relatóriu.
@@ -85,11 +157,62 @@ map onto the two existing toasts. Other validation errors arrive DRF-style
 ### `PATCH /api/profesor/{id}/`
 
 Any subset of the POST fields plus `is_active`. Deactivation is this soft
-toggle — **there is no DELETE** (405), sheets reference the account. Returns
-the updated roster row. Same duplicate codes as POST.
+toggle and keeps the attendance history — prefer it. Returns the updated
+roster row. Same duplicate codes as POST. `PUT` is 405.
 
 A deactivated teacher drops out of `ohin-hotu` and `hotu` results (both
 filter `is_active=True`), so Painel counts shrink accordingly.
+
+### `DELETE /api/profesor/{id}/`
+
+**Irreversible.** Removes the teacher and, by CASCADE, every monthly sheet,
+day row and punch they ever made, plus their photo files on disk.
+
+```json
+{ "password": "<the signed-in admin's own password>" }
+```
+
+| Code | Body | When |
+| --- | --- | --- |
+| `204` | — | Deleted |
+| `400` | `{detail, code: "password_presiza"}` | No `password` in the body |
+| `403` | `{detail, code: "password_sala"}` | Wrong password |
+| `403` | `{detail, code: "rasik"}` | Deleting your own account |
+| `403` | `{detail, code: "eh_admin"}` | Target is an ADMIN — demote to PROFESSOR first |
+| `404` | — | No such account |
+
+The password is the **caller's**, not the target's. The dashboard asks for it
+twice and only sends one copy; the server check is what actually holds, since
+anything can call the endpoint directly.
+
+### `POST /api/profesor/{id}/reset-password/`
+
+A teacher who forgets their password has no self-service path — no e-mail
+delivery, no reset link. They contact the admin, who sets a new one here and
+hands it over.
+
+```json
+{ "password_foun": "SenhaFoun-2026", "password_konfirma": "SenhaFoun-2026" }
+```
+
+Both fields are required and **must be identical**. The server compares them
+too, so a form that forgot to check cannot slip through.
+
+| Code | Body | When |
+| --- | --- | --- |
+| `200` | `{detail, sesaun_taka, profesor: {...}}` | Password changed |
+| `400` | `{detail, code: "password_presiza"}` | A field is missing |
+| `400` | `{detail, code: "password_la_hanesan"}` | The two fields differ |
+| `400` | `{detail, code: "password_fraku", erros: [...]}` | Fails Django's validators (too short, too common, all numeric, too similar to the name/email). `erros` is the list of messages, already user-readable |
+| `403` | `{detail, code: "eh_admin"}` | Target is an ADMIN |
+| `403` | `{detail, code: "rasik"}` | Target is the caller |
+
+**The new password is never returned** — the admin typed it, so the client
+already has it. Show it once in a hand-over card with a copy button.
+
+`sesaun_taka` is how many of that teacher's open sessions were revoked: a reset
+blacklists every refresh token they had, so a phone already logged in stops
+working and must sign in again with the new password.
 
 ## 3. Today, whole school — `GET /api/prezensa/ohin-hotu/` (admin)
 
@@ -237,18 +360,65 @@ For the Konfig panel — values now really come from the server.
   "oras_dader_tama": "08:00:00", "oras_dader_fila": "12:00:00",
   "oras_lorokraik_tama": "13:30:00", "oras_lorokraik_fila": "17:30:00",
   "limite_sesaun": "13:00:00",
-  "eskola_raiu_metru": 100.0, "eskola_obriga_fatin": true
+  "eskola_raiu_metru": 100.0, "eskola_obriga_fatin": true,
+
+  "nivel_edukasaun": [
+    {"value": "FINALISTA", "label": "Finalista"},
+    {"value": "UNIVERSITARIA", "label": "Universitária"},
+    {"value": "LICENCIADO", "label": "Licenciado"}
+  ],
+  "area_estudu_sujere": ["Gestão Informática", "Educação", "Económia"],
+  "sexu": [{"value": "MANE", "label": "Mane"}, {"value": "FETO", "label": "Feto"}]
 }
 ```
+
+The three picklists are served here so the roster form never hardcodes what
+the model owns — add a level in Django and the dashboard picks it up with no
+frontend change.
 
 Read-only; the school's coordinates are deliberately never included.
 
 ## 7. Evidence photos
 
-`marka.foto` and profile `foto` are absolute URLs — render them directly.
+Every punch carries **two** ways to reach its photo:
+
+| Field | Use it for |
+| --- | --- |
+| `foto` | **displaying** — absolute URL straight to the file, no auth, fast |
+| `foto_download` | **saving/exporting** — `GET /api/marka/{id}/foto/`, token required, streams the same bytes |
+| `naran_foto_download` | the filename that download will use |
+
+Punch photos are stored under a readable, predictable name:
+
+```
+prezensa/2026/08/punch_{numeru_id}_{naran-slug}_{checkin|checkout}_{YYYY-MM-DD}_{sesaun}.jpg
+prezensa/2026/08/punch_6_martinho-martins_checkin_2026-08-10_dader.jpg
+```
+
+`sesaun` (`dader`/`lorokraik`) is part of it because a teacher checks in twice a
+day — name, direction and date alone are not unique. `numeru_id` leads so two
+teachers whose names slugify alike cannot collide.
+
+> **Deployment consequence.** A readable path is a guessable one, and
+> `MEDIA_ROOT` is served with no authentication. **Do not expose `MEDIA_ROOT`
+> publicly in production** — serve it privately and let clients fetch photos
+> through `GET /api/marka/{id}/foto/`, which checks the token first. Left
+> public, anyone who sees one photo URL can enumerate every teacher's selfie
+> for any date.
+
+Profile photos (`User.foto`) keep uuid names — they are replaced repeatedly,
+and a recycled name once served the wrong person's picture.
+
+`GET /api/marka/{id}/foto/` returns `200` with
+`Content-Disposition: attachment; filename="…"` for the punch's own teacher or
+any admin; `403 {code: "la_iha_permisaun"}` for another teacher; `401`
+anonymous; `404 {code: "foto_lakon"}` when the row survives but the file does
+not.
+
 **Caveat:** `/media/` is served by Django only while `DEBUG=True`
-(`core/urls.py`); in production the web server must serve `MEDIA_ROOT` or
-every photo 404s. Flag this at deploy time.
+(`core/urls.py`); in production the web server must serve `MEDIA_ROOT` or every
+inline photo 404s. The download route works either way, since it streams
+through Django.
 
 ## 8. Error handling summary
 
@@ -260,6 +430,13 @@ Errors are `400/403/404` with `{detail, code?, ...extra}`:
 | `invalid_period` | `hotu`, `status` POST | fix pickers |
 | `invalid_profesor` | `hotu`, `status` POST | shouldn't happen from UI |
 | `iha_marka` | `status` POST/DELETE | show conflicting `loron`, offer to view the day |
+| `password_presiza` / `password_sala` | `profesor` DELETE | keep the modal open, clear both password fields |
+| `rasik` | `profesor` DELETE / reset-password | "La bele … konta rasik.", close the modal |
+| `eh_admin` | `profesor` DELETE / reset-password | admin rows are read-only; hide both buttons |
+| `password_la_hanesan` | reset-password, troka-password | the two new-password fields differ — should be caught by the form first |
+| `password_fraku` | reset-password, troka-password | show `erros[]` under the field |
+| `password_tuan_sala` | troka-password | wrong current password — keep the modal open, clear that field only |
+| `password_hanesan_tuan` | troka-password | the new password equals the old one |
 | `token_not_valid` | refresh/logout | refresh → re-login |
 | — (`403`) | any admin route | account lacks `EhAdmin`; send to login or hide UI |
 
@@ -267,17 +444,27 @@ Errors are `400/403/404` with `{detail, code?, ...extra}`:
 
 ## 9. Endpoints that exist but the dashboard does not call
 
-`POST /api/prezensa/checkin|checkout/` (mobile punches, multipart),
-`GET /api/prezensa/ohin/` and `istoria/` (self-scoped),
-`GET /api/lista-prezensa/` (self-scoped sheets),
-`PATCH /api/auth/me/` (own photo only). Listed so nobody goes looking for an
-admin variant that doesn't exist — punch times are deliberately read-only,
-and there is no CSV endpoint (Relatóriu exports client-side from §4 rows).
+| Endpoint | Why not |
+| --- | --- |
+| `POST /api/prezensa/checkin/` · `checkout/` | the teacher's own punch, multipart, mobile only |
+| `GET /api/prezensa/ohin/` | self-scoped "my today"; the dashboard uses `ohin-hotu/` |
+| `GET /api/prezensa/` · `{id}/` | self-scoped day rows — **no consumer at all** |
+| `GET /api/lista-prezensa/` · `{id}/` | self-scoped monthly sheets — **no consumer at all** |
+| `PATCH /api/auth/me/` | own photo; the dashboard *does* use this for the admin's own picture |
+
+Listed so nobody goes looking for an admin variant that does not exist. Punch
+times are deliberately read-only — there is no endpoint that edits a recorded
+time — and there is no CSV/PDF endpoint, because Relatóriu builds both in the
+browser from §4 rows.
+
+**Naming note (2026-08-10):** the model methods behind the punch endpoints are
+`Prezensa.checkin()` / `checkout()`, the button flags are `bele_checkin` /
+`bele_checkout`, and the "you must check in first" error is `no_checkin`. The
+older `clock_*` spellings are gone from the wire entirely.
 
 ## 10. Not implemented (yet)
 
-- **Password reset** — `password_inisial` at creation is the only issuance;
-  if an admin loses it there is no recovery endpoint.
-- **E-mail delivery** of initial passwords (R3's original wording) — adjust
-  the modal hint to "hand the password over" until it exists.
+- **E-mail delivery** of passwords — neither the initial one nor a reset is
+  sent anywhere. Both are handed over in person, which is why each is shown
+  once in a copy-able card.
 - Pagination — nothing paginates; every list is a plain array.
