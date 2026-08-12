@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { BackgroundSlideshow } from "@/components/BackgroundSlideshow";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { ApiErru, mensajenErru } from "@/lib/api";
 import { login, useSesaun } from "@/lib/auth";
 
@@ -90,9 +91,8 @@ export default function LoginPage() {
           </Field>
 
           <Field label="Password" htmlFor="lPass">
-            <input
+            <PasswordInput
               id="lPass"
-              type="password"
               value={password}
               autoComplete="current-password"
               onChange={(e) => {
