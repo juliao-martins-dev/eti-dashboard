@@ -94,7 +94,7 @@ interface LoginResposta {
  */
 const SEM_ASESU: Partial<Record<Role, string>> = {
   PROFESSOR:
-    "Ita boot hanesan profesór babain, la iha autorizasaun atu tama ba iha painel administrasaun.",
+    "Ita boot hanesan profesór babain, la iha autorizasaun atu tama ba iha panel administrasaun.",
   ESTUDANTE:
     "Konta estudante la iha autorizasaun atu tama ba iha painel administrasaun.",
 };
