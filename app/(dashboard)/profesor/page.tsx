@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
+import { useKonfig } from "@/lib/prezensa";
 import {
   IconAumenta,
   IconBuka,
@@ -23,6 +25,7 @@ import {
 import { Field, Hint, Row2 } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
 import { Panel } from "@/components/ui/Panel";
+import { PasswordInput } from "@/components/ui/PasswordInput";
 import { useToast } from "@/components/ui/Toast";
 import { ApiErru, mensajenErru } from "@/lib/api";
 import { kopia } from "@/lib/kopia";
@@ -33,7 +36,7 @@ import {
   resetPasswordProfesor,
   useProfesor,
 } from "@/lib/store";
-import type { Sexu, User } from "@/lib/types";
+import type { NivelEdukasaun, Sexu, User } from "@/lib/types";
 
 interface Form {
   naran_kompletu: string;
@@ -42,6 +45,10 @@ interface Form {
   email: string;
   kargu: string;
   nu_kontaktu: string;
+  /** HABILITASAUN LITERÁRIA is a heading over these two on the paper roster. */
+  nivel_edukasaun: NivelEdukasaun | "";
+  area_estudu: string;
+  disiplina_hanorin: string;
 }
 
 const FORM_VAZIU: Form = {
@@ -51,6 +58,9 @@ const FORM_VAZIU: Form = {
   email: "",
   kargu: "",
   nu_kontaktu: "",
+  nivel_edukasaun: "",
+  area_estudu: "",
+  disiplina_hanorin: "",
 };
 
 /** null = closed · "foun" = create · a User = edit that account. */
@@ -59,6 +69,8 @@ type Alvu = null | "foun" | User;
 export default function ProfesorPage() {
   const toast = useToast();
   const { profesor, karega, erru } = useProfesor();
+  // The picklists come from the API so the form cannot drift from the model.
+  const { dadus: konfig } = useKonfig();
   const [buka, setBuka] = useState("");
   const [alvu, setAlvu] = useState<Alvu>(null);
   const [form, setForm] = useState<Form>(FORM_VAZIU);
@@ -74,12 +86,20 @@ export default function ProfesorPage() {
   const senhaRef = useRef<HTMLInputElement>(null);
   /** Confirms the copy on the button itself; a toast alone is easy to miss. */
   const [kopiaOk, setKopiaOk] = useState(false);
+  /**
+   * Whether the handed-over password is legible. Held here rather than inside
+   * the field because the copy fallback has to force it open — a browser will
+   * not let the user Ctrl+C out of a masked input.
+   */
+  const [hatudu, setHatudu] = useState(false);
 
   const lista = useMemo(() => {
     const q = buka.trim().toLowerCase();
     if (!q) return profesor;
     return profesor.filter((p) =>
-      `${p.naran_kompletu}${p.email}${p.kargu}`.toLowerCase().includes(q),
+      `${p.naran_kompletu}${p.email}${p.kargu}${p.area_estudu ?? ""}${p.disiplina_hanorin ?? ""}`
+        .toLowerCase()
+        .includes(q),
     );
   }, [profesor, buka]);
 
@@ -94,6 +114,9 @@ export default function ProfesorPage() {
             email: a.email,
             kargu: a.kargu ?? "",
             nu_kontaktu: a.nu_kontaktu ?? "",
+            nivel_edukasaun: a.nivel_edukasaun ?? "",
+            area_estudu: a.area_estudu ?? "",
+            disiplina_hanorin: a.disiplina_hanorin ?? "",
           },
     );
     setAlvu(a);
@@ -116,6 +139,9 @@ export default function ProfesorPage() {
       kargu: form.kargu.trim(),
       nu_kontaktu: form.nu_kontaktu.trim(),
       sexu: form.sexu,
+      nivel_edukasaun: form.nivel_edukasaun,
+      area_estudu: form.area_estudu.trim(),
+      disiplina_hanorin: form.disiplina_hanorin.trim(),
     };
 
     setHaruka(true);
@@ -125,6 +151,7 @@ export default function ProfesorPage() {
         // Straight into the hand-over: closing without reading the password
         // means it is gone for good.
         setKopiaOk(false);
+        setHatudu(false);
         setSenha({
           naran: kriadu.naran_kompletu,
           password: kriadu.password_inisial,
@@ -156,6 +183,11 @@ export default function ProfesorPage() {
       return;
     }
     // Last resort — leave the password highlighted so Ctrl+C still works.
+    // It has to be revealed first: a masked input can be selected but not
+    // copied out of, so the fallback would hand over an empty clipboard.
+    // flushSync, because an ordinary setState would still be pending when
+    // select() ran and the selection would land on the masked field.
+    flushSync(() => setHatudu(true));
     senhaRef.current?.select();
     toast("La bele kopia otomátiku — password hili ona, uza Ctrl+C");
   }
@@ -237,6 +269,7 @@ export default function ProfesorPage() {
       // Straight into the hand-over card: the teacher has to be told what it
       // is, and the server never sends it back.
       setKopiaOk(false);
+      setHatudu(false);
       setSenha({ naran, password: nova1, tipu: "reset" });
     } catch (e) {
       toast(mensajenErru(e));
@@ -257,7 +290,7 @@ export default function ProfesorPage() {
           <input
             value={buka}
             onChange={(e) => setBuka(e.target.value)}
-            placeholder="Buka naran, email, kargu…"
+            placeholder="Buka naran, email, kargu, área, disiplina…"
             aria-label="Buka profesór"
             className="w-[230px] pl-[30px]"
           />
@@ -276,15 +309,16 @@ export default function ProfesorPage() {
               <Th>Profesór</Th>
               <Th>Nu. ID</Th>
               <Th>Kargu</Th>
+              <Th>Habilitasaun literária</Th>
               <Th>Kontaktu</Th>
               <Th>Status konta</Th>
             </tr>
           </thead>
           <tbody>
             {erru ? (
-              <EmptyRow colSpan={5}>{erru}</EmptyRow>
+              <EmptyRow colSpan={6}>{erru}</EmptyRow>
             ) : karega ? (
-              <EmptyRow colSpan={5}>Karega dadus…</EmptyRow>
+              <EmptyRow colSpan={6}>Karega dadus…</EmptyRow>
             ) : lista.length ? (
               lista.map((p) => {
                 const ativu = p.is_active ?? true;
@@ -300,6 +334,18 @@ export default function ProfesorPage() {
                     </Td>
                     <Td className="font-mono">{p.numeru_id}</Td>
                     <Td>{p.kargu || "—"}</Td>
+                    <Td>
+                      {p.nivel_edukasaun_display || p.area_estudu ? (
+                        <>
+                          <div>{p.nivel_edukasaun_display || "—"}</div>
+                          <div className="text-[12px] text-muted">
+                            {p.area_estudu || "—"}
+                          </div>
+                        </>
+                      ) : (
+                        "—"
+                      )}
+                    </Td>
                     <Td className="font-mono text-muted">{p.nu_kontaktu || "—"}</Td>
                     <Td>
                       <Badge tone={ativu ? "ok" : "muted"}>
@@ -310,7 +356,7 @@ export default function ProfesorPage() {
                 );
               })
             ) : (
-              <EmptyRow colSpan={5}>La hetan rezultadu</EmptyRow>
+              <EmptyRow colSpan={6}>La hetan rezultadu</EmptyRow>
             )}
           </tbody>
         </DataTable>
@@ -432,6 +478,62 @@ export default function ProfesorPage() {
           </Field>
         </Row2>
 
+        {/*
+          HABILITASAUN LITERÁRIA is a heading over two columns on the paper
+          roster, so it is a fieldset here rather than one input.
+        */}
+        <Row2>
+          <Field label="Nivel edukasaun" htmlFor="fNivel">
+            <select
+              id="fNivel"
+              value={form.nivel_edukasaun}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  nivel_edukasaun: e.target.value as NivelEdukasaun | "",
+                })
+              }
+            >
+              <option value="">—</option>
+              {(konfig?.nivel_edukasaun ?? []).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Aréa estudu" htmlFor="fArea">
+            {/*
+              A datalist, not a select: the school's own roster spells some
+              areas more than one way and new ones appear, so this suggests
+              without refusing anything.
+            */}
+            <input
+              id="fArea"
+              list="areaEstudu"
+              value={form.area_estudu}
+              onChange={(e) => setForm({ ...form, area_estudu: e.target.value })}
+              placeholder="ez. Gestão Informática"
+            />
+            <datalist id="areaEstudu">
+              {(konfig?.area_estudu_sujere ?? []).map((a) => (
+                <option key={a} value={a} />
+              ))}
+            </datalist>
+          </Field>
+        </Row2>
+
+        <Field label="Disiplina hanorin" htmlFor="fDisiplina">
+          <input
+            id="fDisiplina"
+            value={form.disiplina_hanorin}
+            onChange={(e) =>
+              setForm({ ...form, disiplina_hanorin: e.target.value })
+            }
+            placeholder="ez. Sistema Base de Dados & Tec. Multimedia"
+          />
+        </Field>
+
         {edita ? null : (
           <Hint>
             Sistema sei kria password inisiál. Haruka email seidauk funsiona, tan
@@ -467,11 +569,21 @@ export default function ProfesorPage() {
         }
       >
         <div className="flex items-center gap-2">
-          <input
+          {/*
+            Masked by default, so the password is not left standing on a
+            screen someone else can see. Kopia is unaffected either way: it
+            copies `senha.password` straight from state and never reads this
+            input, so what lands on the clipboard is the same password whether
+            the eye is open or shut.
+          */}
+          <PasswordInput
             ref={senhaRef}
             readOnly
+            hatudu={hatudu}
+            onHatudu={setHatudu}
             value={senha?.password ?? ""}
             onFocus={(e) => e.currentTarget.select()}
+            autoComplete="off"
             className="font-mono"
           />
           <Button variant="ghost" onClick={kopiaSenha} className="shrink-0">
@@ -589,9 +701,8 @@ export default function ProfesorPage() {
 
         <div className="mt-4">
           <Field label="Password foun" htmlFor="fNova1">
-            <input
+            <PasswordInput
               id="fNova1"
-              type="password"
               autoComplete="new-password"
               value={nova1}
               onChange={(e) => setNova1(e.target.value)}
@@ -601,9 +712,8 @@ export default function ProfesorPage() {
         </div>
 
         <Field label="Konfirma password foun" htmlFor="fNova2">
-          <input
+          <PasswordInput
             id="fNova2"
-            type="password"
             autoComplete="new-password"
             value={nova2}
             onChange={(e) => setNova2(e.target.value)}
