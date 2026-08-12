@@ -28,7 +28,7 @@ export const API_KEY = "eti.api";
  * request cannot connect.
  */
 export const API_HOSTS = [
-  "http://10.214.94.41:8000/api",
+  "http://10.74.33.41:8000/api",
   "http://192.168.0.63:8000/api",
 ] as const;
 
