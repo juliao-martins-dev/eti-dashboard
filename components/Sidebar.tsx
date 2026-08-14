@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ReactElement,
+} from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -18,6 +24,7 @@ import {
 import { KortaFotoModal } from "@/components/KortaFotoModal";
 import { Lightbox } from "@/components/ui/Lightbox";
 import { useToast } from "@/components/ui/Toast";
+import { useTooltip } from "@/components/ui/Tooltip";
 import { mensajenErru } from "@/lib/api";
 import { atualizaFoto, logout, useSesaun } from "@/lib/auth";
 import { cx } from "@/lib/cx";
@@ -197,33 +204,15 @@ export function Sidebar({
       </div>
 
       <nav className="flex flex-1 flex-col gap-[2px] px-2 py-[10px]">
-        {NAV.map(({ href, label, Icon }) => {
-          const active = pathname === href;
-          return (
-            <Link
-              key={href}
-              href={href}
-              // Closing on navigation rather than on a pathname effect: the
-              // drawer covers the page it just moved to.
-              onClick={onClose}
-              aria-current={active ? "page" : undefined}
-              // The only thing naming the screen once the label is gone.
-              title={kolapsu ? label : undefined}
-              className={cx(
-                "flex w-full items-center gap-[10px] rounded-[8px] px-[10px] py-[9px] text-left",
-                kolapsu && "md:justify-center md:px-0",
-                active
-                  ? "bg-soft font-semibold text-accent"
-                  : "font-medium text-muted hover:bg-bg hover:text-text",
-              )}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              {/* sr-only rather than hidden: the rail is a visual shorthand,
-                  and a screen reader still needs to hear where the link goes. */}
-              <span className={cx(kolapsu && "md:sr-only")}>{label}</span>
-            </Link>
-          );
-        })}
+        {NAV.map((n) => (
+          <NavItem
+            key={n.href}
+            {...n}
+            active={pathname === n.href}
+            kolapsu={kolapsu}
+            onClose={onClose}
+          />
+        ))}
 
         {/*
           The control the admin decides with. It lives at the foot of the nav
@@ -232,27 +221,90 @@ export function Sidebar({
 
           `hidden md:flex`: there is nothing to collapse on a phone.
         */}
-        <button
-          type="button"
-          onClick={() => setKolapsu(!kolapsu)}
-          aria-pressed={kolapsu}
-          title={kolapsu ? "Loke menu" : "Taka menu"}
-          className={cx(
-            "mt-auto hidden w-full items-center gap-[10px] rounded-[8px] px-[10px] py-[9px] text-left font-medium text-muted md:flex hover:bg-bg hover:text-text",
-            kolapsu && "md:justify-center md:px-0",
-          )}
-        >
-          {kolapsu ? (
-            <IconTuir className="h-4 w-4 shrink-0" />
-          ) : (
-            <IconAntes className="h-4 w-4 shrink-0" />
-          )}
-          <span className={cx(kolapsu && "md:sr-only")}>Taka menu</span>
-        </button>
+        <BotaunKolapsu kolapsu={kolapsu} />
       </nav>
 
         <UserChip kolapsu={kolapsu} />
       </aside>
+    </>
+  );
+}
+
+/**
+ * One nav row. A component rather than inline JSX because each needs its own
+ * tooltip, and a hook cannot be called from inside `.map`.
+ */
+function NavItem({
+  href,
+  label,
+  Icon,
+  active,
+  kolapsu,
+  onClose,
+}: {
+  href: string;
+  label: string;
+  Icon: (p: { className?: string }) => ReactElement;
+  active: boolean;
+  kolapsu: boolean;
+  onClose?: () => void;
+}) {
+  // Only on the rail: with the label right there, a bubble repeating it is
+  // noise.
+  const tip = useTooltip(label, { ativu: kolapsu });
+
+  return (
+    <>
+      <Link
+        href={href}
+        // Closing on navigation rather than on a pathname effect: the drawer
+        // covers the page it just moved to.
+        onClick={onClose}
+        aria-current={active ? "page" : undefined}
+        {...tip.props}
+        className={cx(
+          "flex w-full items-center gap-[10px] rounded-[8px] px-[10px] py-[9px] text-left",
+          kolapsu && "md:justify-center md:px-0",
+          active
+            ? "bg-soft font-semibold text-accent"
+            : "font-medium text-muted hover:bg-bg hover:text-text",
+        )}
+      >
+        <Icon className="h-4 w-4 shrink-0" />
+        {/* sr-only rather than hidden: the rail is a visual shorthand, and a
+            screen reader still needs to hear where the link goes. */}
+        <span className={cx(kolapsu && "md:sr-only")}>{label}</span>
+      </Link>
+      {tip.tooltip}
+    </>
+  );
+}
+
+/** The control the admin decides the rail with. */
+function BotaunKolapsu({ kolapsu }: { kolapsu: boolean }) {
+  const tip = useTooltip("Loke menu", { ativu: kolapsu });
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setKolapsu(!kolapsu)}
+        aria-pressed={kolapsu}
+        aria-label={kolapsu ? "Loke menu" : "Taka menu"}
+        {...tip.props}
+        className={cx(
+          "mt-auto hidden w-full items-center gap-[10px] rounded-[8px] px-[10px] py-[9px] text-left font-medium text-muted md:flex hover:bg-bg hover:text-text",
+          kolapsu && "md:justify-center md:px-0",
+        )}
+      >
+        {kolapsu ? (
+          <IconTuir className="h-4 w-4 shrink-0" />
+        ) : (
+          <IconAntes className="h-4 w-4 shrink-0" />
+        )}
+        <span className={cx(kolapsu && "md:sr-only")}>Taka menu</span>
+      </button>
+      {tip.tooltip}
     </>
   );
 }
@@ -272,6 +324,16 @@ function UserChip({ kolapsu }: { kolapsu: boolean }) {
   const [korta, setKorta] = useState<string | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const foneRef = useRef<HTMLInputElement>(null);
+  // Suppressed while the menu is open — the bubble would sit on top of it.
+  const tip = useTooltip(sesaun?.naran_kompletu ?? "Konta", {
+    ativu: kolapsu && !abertu,
+  });
+  // Two icon-only buttons inside the flyout. They point up, because there is
+  // nothing to the right of them but the edge of the menu.
+  const tipHaree = useTooltip("Haree foto boot", { lado: "top" });
+  const tipFoto = useTooltip(sesaun?.foto ? "Troka foto" : "Aumenta foto", {
+    lado: "top",
+  });
 
   useEffect(() => {
     if (!abertu) return;
@@ -368,7 +430,7 @@ function UserChip({ kolapsu }: { kolapsu: boolean }) {
                 onClick={() => sesaun?.foto && setLightbox(true)}
                 disabled={!sesaun?.foto}
                 aria-label={sesaun?.foto ? "Haree foto boot" : undefined}
-                title={sesaun?.foto ? "Haree foto boot" : undefined}
+                {...(sesaun?.foto ? tipHaree.props : {})}
                 className={cx(
                   "block rounded-full",
                   sesaun?.foto && "cursor-zoom-in hover:brightness-95",
@@ -383,7 +445,7 @@ function UserChip({ kolapsu }: { kolapsu: boolean }) {
                 disabled={haruka}
                 onClick={() => foneRef.current?.click()}
                 aria-label={sesaun?.foto ? "Troka foto" : "Aumenta foto"}
-                title={sesaun?.foto ? "Troka foto" : "Aumenta foto"}
+                {...tipFoto.props}
                 className={cx(
                   "absolute -right-[3px] -bottom-[3px] flex h-[19px] w-[19px] items-center justify-center rounded-full border-2 border-surface bg-accent text-white",
                   "[&_svg]:h-[10px] [&_svg]:w-[10px]",
@@ -394,6 +456,8 @@ function UserChip({ kolapsu }: { kolapsu: boolean }) {
               >
                 <IconFoto />
               </button>
+              {tipHaree.tooltip}
+              {tipFoto.tooltip}
             </div>
             <div className="min-w-0">
               <b className="block truncate text-[12.5px]">{naran}</b>
@@ -439,7 +503,7 @@ function UserChip({ kolapsu }: { kolapsu: boolean }) {
         aria-haspopup="menu"
         aria-expanded={abertu}
         onClick={() => setAbertu((a) => !a)}
-        title={kolapsu ? naran : undefined}
+        {...tip.props}
         className={cx(
           "flex w-full items-center gap-[9px] rounded-[8px] p-1 text-left hover:bg-bg",
           kolapsu && "md:justify-center",
@@ -453,6 +517,7 @@ function UserChip({ kolapsu }: { kolapsu: boolean }) {
           </small>
         </div>
       </button>
+      {tip.tooltip}
 
       {lightbox && sesaun?.foto ? (
         <Lightbox
