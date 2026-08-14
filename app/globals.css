@@ -37,6 +37,9 @@
 
   --animate-fade: fade 0.18s ease;
   --animate-pop: pop 0.16s ease;
+  /* Faster than the others on purpose: a tooltip answers a question the
+     reader already has, so it should arrive rather than perform. */
+  --animate-tip: tip 0.13s ease-out;
 
   /* Ken Burns drift for the login background; one per slide, cycled so two
      neighbouring photos never move the same way. */
@@ -86,6 +89,19 @@
     from {
       opacity: 0;
       transform: scale(0.97);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  /* Drifts out of the trigger it belongs to. The anchoring translate lives on
+     the wrapper, so this transform is free to animate without fighting it. */
+  @keyframes tip {
+    from {
+      opacity: 0;
+      transform: translateX(-4px) scale(0.96);
     }
     to {
       opacity: 1;
