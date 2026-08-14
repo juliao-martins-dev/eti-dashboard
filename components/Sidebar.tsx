@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
+  IconAntes,
   IconFoto,
   IconKonfigurasaun,
   IconPainel,
@@ -12,6 +13,7 @@ import {
   IconProfesor,
   IconRelatoriu,
   IconSai,
+  IconTuir,
 } from "@/components/icons";
 import { KortaFotoModal } from "@/components/KortaFotoModal";
 import { Lightbox } from "@/components/ui/Lightbox";
@@ -19,6 +21,7 @@ import { useToast } from "@/components/ui/Toast";
 import { mensajenErru } from "@/lib/api";
 import { atualizaFoto, logout, useSesaun } from "@/lib/auth";
 import { cx } from "@/lib/cx";
+import { setKolapsu, useKolapsu } from "@/lib/sidebar";
 
 /** Anything larger is a phone original; the API has no upload limit of its own. */
 const FOTO_MAX = 5 * 1024 * 1024;
@@ -94,6 +97,7 @@ export function Sidebar({
   onClose?: () => void;
 }) {
   const pathname = usePathname();
+  const kolapsu = useKolapsu();
 
   useEffect(() => {
     if (!abertu) return;
@@ -150,7 +154,14 @@ export function Sidebar({
           "transition-[transform,visibility,box-shadow]",
           // `md:left-auto` matters: a sticky element with left:0 would also
           // stick sideways the moment a wide table scrolls the page.
-          "md:sticky md:left-auto md:z-auto md:visible md:translate-x-0 md:shadow-none md:transition-none",
+          "md:sticky md:left-auto md:z-auto md:visible md:translate-x-0 md:shadow-none",
+          // Desktop no longer opts out of transitions entirely — the rail
+          // needs its width animated. Only width, so the drawer's slide is
+          // still governed by the mobile rules above.
+          "md:transition-[width] md:duration-200 md:ease-out",
+          // The rail is desktop-only: below `md` the sidebar is a drawer that
+          // is either open or gone, and it always opens at full width.
+          kolapsu ? "md:w-[68px]" : "md:w-[218px]",
           // Asymmetric on purpose: entering decelerates over 300ms so it feels
           // like it settles, leaving accelerates out in 200ms so dismissing
           // never feels like waiting.
@@ -159,7 +170,13 @@ export function Sidebar({
             : "invisible -translate-x-full duration-200 ease-in",
         )}
       >
-      <div className="flex items-center gap-[10px] border-b border-border px-4 pt-[18px] pb-[14px]">
+      <div
+        className={cx(
+          "flex items-center gap-[10px] border-b border-border px-4 pt-[18px] pb-[14px]",
+          // Centred on the rail so the mark sits over the icon column below.
+          kolapsu && "md:justify-center md:px-0",
+        )}
+      >
         <Image
           src="/icon.png"
           alt="Escola Técnica Informática Dili"
@@ -168,7 +185,7 @@ export function Sidebar({
           priority
           className="h-8 w-8 shrink-0"
         />
-        <div className="min-w-0">
+        <div className={cx("min-w-0", kolapsu && "md:hidden")}>
           <b className="block font-brand text-[15px] tracking-[0.02em]">
             ETI PREZENSA
           </b>
@@ -190,21 +207,51 @@ export function Sidebar({
               // drawer covers the page it just moved to.
               onClick={onClose}
               aria-current={active ? "page" : undefined}
+              // The only thing naming the screen once the label is gone.
+              title={kolapsu ? label : undefined}
               className={cx(
                 "flex w-full items-center gap-[10px] rounded-[8px] px-[10px] py-[9px] text-left",
+                kolapsu && "md:justify-center md:px-0",
                 active
                   ? "bg-soft font-semibold text-accent"
                   : "font-medium text-muted hover:bg-bg hover:text-text",
               )}
             >
               <Icon className="h-4 w-4 shrink-0" />
-              {label}
+              {/* sr-only rather than hidden: the rail is a visual shorthand,
+                  and a screen reader still needs to hear where the link goes. */}
+              <span className={cx(kolapsu && "md:sr-only")}>{label}</span>
             </Link>
           );
         })}
+
+        {/*
+          The control the admin decides with. It lives at the foot of the nav
+          rather than in the header because it has to be reachable in both
+          states, and the header has no room for it once collapsed.
+
+          `hidden md:flex`: there is nothing to collapse on a phone.
+        */}
+        <button
+          type="button"
+          onClick={() => setKolapsu(!kolapsu)}
+          aria-pressed={kolapsu}
+          title={kolapsu ? "Loke menu" : "Taka menu"}
+          className={cx(
+            "mt-auto hidden w-full items-center gap-[10px] rounded-[8px] px-[10px] py-[9px] text-left font-medium text-muted md:flex hover:bg-bg hover:text-text",
+            kolapsu && "md:justify-center md:px-0",
+          )}
+        >
+          {kolapsu ? (
+            <IconTuir className="h-4 w-4 shrink-0" />
+          ) : (
+            <IconAntes className="h-4 w-4 shrink-0" />
+          )}
+          <span className={cx(kolapsu && "md:sr-only")}>Taka menu</span>
+        </button>
       </nav>
 
-        <UserChip />
+        <UserChip kolapsu={kolapsu} />
       </aside>
     </>
   );
@@ -214,7 +261,7 @@ export function Sidebar({
  * The admin chip: their own photo, and a menu to replace it, jump to
  * Konfigurasaun or sign out.
  */
-function UserChip() {
+function UserChip({ kolapsu }: { kolapsu: boolean }) {
   const router = useRouter();
   const toast = useToast();
   const sesaun = useSesaun();
@@ -300,8 +347,18 @@ function UserChip() {
 
   return (
     <div ref={ref} className="relative border-t border-border p-3">
+      {/*
+        On the rail the chip is 44px wide, so a menu sized to its parent would
+        be unreadable — it takes a fixed width there and overhangs the sidebar,
+        which is what a rail flyout is supposed to do.
+      */}
       {abertu ? (
-        <div className="absolute bottom-full left-3 z-40 mb-1 w-[calc(100%-24px)] animate-pop rounded-[10px] border border-border bg-surface p-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]">
+        <div
+          className={cx(
+            "absolute bottom-full left-3 z-40 mb-1 w-[calc(100%-24px)] animate-pop rounded-[10px] border border-border bg-surface p-1 shadow-[0_8px_24px_rgba(0,0,0,0.12)]",
+            kolapsu && "md:w-[228px]",
+          )}
+        >
           <div className="flex items-center gap-[10px] border-b border-border px-[10px] pt-[9px] pb-[10px]">
             <div className="relative shrink-0">
               {/* The photo opens full size; the badge beside it replaces the
@@ -382,10 +439,14 @@ function UserChip() {
         aria-haspopup="menu"
         aria-expanded={abertu}
         onClick={() => setAbertu((a) => !a)}
-        className="flex w-full items-center gap-[9px] rounded-[8px] p-1 text-left hover:bg-bg"
+        title={kolapsu ? naran : undefined}
+        className={cx(
+          "flex w-full items-center gap-[9px] rounded-[8px] p-1 text-left hover:bg-bg",
+          kolapsu && "md:justify-center",
+        )}
       >
         <Avatar foto={sesaun?.foto ?? null} naran={naran} tamañu={30} />
-        <div className="min-w-0">
+        <div className={cx("min-w-0", kolapsu && "md:hidden")}>
           <b className="block truncate text-[12.5px]">{naran}</b>
           <small className="block text-[11px] text-muted">
             {sesaun?.role_display ?? sesaun?.role ?? "ADMIN"} · ETI-Dili
