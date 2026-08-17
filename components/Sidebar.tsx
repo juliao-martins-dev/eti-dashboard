@@ -37,7 +37,7 @@ const FOTO_MAX = 5 * 1024 * 1024;
 // foot of the sidebar, next to logout, rather than beside the daily screens.
 const NAV = [
   { href: "/", label: "Panel", Icon: IconPainel },
-  { href: "/profesor", label: "Profesór sira", Icon: IconProfesor },
+  { href: "/manorin", label: "Manorin sira", Icon: IconProfesor },
   { href: "/prezensa", label: "Prezensa", Icon: IconPrezensa },
   { href: "/relatoriu", label: "Relatóriu", Icon: IconRelatoriu },
 ] as const;
@@ -86,6 +86,7 @@ function Avatar({
       className="flex shrink-0 items-center justify-center rounded-full bg-accent font-brand text-[12px] font-semibold text-white"
     >
       {inisiais(naran)}
+      <h1>OOps!</h1>
     </div>
   );
 }
