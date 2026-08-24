@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { DetalleModal } from "@/components/DetalleModal";
 import { Filters } from "@/components/Filters";
@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/DataTable";
 import { Field, Hint, Row2 } from "@/components/ui/Field";
 import { Modal } from "@/components/ui/Modal";
-import { Pagination } from "@/components/ui/Pagination";
 import { Empty, Panel } from "@/components/ui/Panel";
 import { PunchChip } from "@/components/ui/PunchChip";
 import { useToast } from "@/components/ui/Toast";
@@ -33,7 +32,6 @@ import {
   ORARIU,
 } from "@/lib/format";
 import { useOhin } from "@/lib/ohin";
-import { usePajina } from "@/lib/pajina";
 import type { Filtru, Periodu } from "@/lib/periodu";
 import { hasaiStatus, rejistuStatus, useHotu } from "@/lib/prezensa";
 import { useProfesor } from "@/lib/store";
@@ -46,6 +44,25 @@ const TIPU_LISENSA: { value: Status; label: string }[] = [
   { value: "HOLIDAY", label: "Feriadu" },
   { value: "ABSENT", label: "Falta" },
 ];
+
+/**
+ * The grid's own filter, on top of the shared period/teacher toolbar.
+ *
+ * `mamuk` is not a status the API stores — it is a row with no `prezensa` at
+ * all, which is the day nobody recorded anything. That is the row an
+ * administrator opens this screen to find, so it earns a place in the list.
+ */
+const STATUS_FILTRU = [
+  { value: "hotu", label: "Status hotu-hotu" },
+  { value: "PRESENT", label: "Prezente" },
+  { value: "ABSENT", label: "Falta" },
+  { value: "LEAVE", label: "Lisensa" },
+  { value: "MISSION", label: "Misaun" },
+  { value: "HOLIDAY", label: "Feriadu" },
+  { value: "mamuk", label: "Seidauk iha rejistu" },
+] as const;
+
+type StatusFiltru = (typeof STATUS_FILTRU)[number]["value"];
 
 export default function PrezensaPage() {
   // useSearchParams needs a Suspense boundary in the App Router.
@@ -104,11 +121,22 @@ function Prezensa({ ohin }: { ohin: Data }) {
     obs: "",
   });
 
-  const linha = dadus?.profesor ?? [];
+  // Memoised for its identity, not its cost: `?? []` mints a fresh array on
+  // every render while the fetch is in flight, which would defeat the filter
+  // memo below.
+  const linha = useMemo(() => dadus?.profesor ?? [], [dadus]);
   const komProfesor = filtru.who === "hotu";
-  // Keyed on the filter: changing period or teacher answers a new question,
-  // and the answer starts at its own first row.
-  const pajina = usePajina(linha, { chave: JSON.stringify(filtru) });
+
+  const [status, setStatus] = useState<StatusFiltru>("hotu");
+
+  // Narrowing rather than paging: a month for the whole school is ~1500 rows,
+  // and the reason to open it is almost always one kind of day. Filtering
+  // answers that in one step, where paging made it 300 pages to look through.
+  const liñaFiltradu = useMemo(() => {
+    if (status === "hotu") return linha;
+    if (status === "mamuk") return linha.filter((r) => !r.prezensa);
+    return linha.filter((r) => r.prezensa?.status === status);
+  }, [linha, status]);
 
   function abreLisensa(inisial?: Partial<StatusRejistu>) {
     setKonflitu(null);
@@ -168,6 +196,17 @@ function Prezensa({ ohin }: { ohin: Data }) {
   return (
     <>
       <Filters value={filtru} onChange={setFiltru}>
+        <select
+          aria-label="Status"
+          value={status}
+          onChange={(e) => setStatus(e.target.value as StatusFiltru)}
+        >
+          {STATUS_FILTRU.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
         <Button variant="ghost" onClick={() => abreLisensa()}>
           <IconLisensa />
           Rejistu Lisensa
@@ -193,8 +232,8 @@ function Prezensa({ ohin }: { ohin: Data }) {
               <EmptyRow colSpan={komProfesor ? 7 : 6}>{erru}</EmptyRow>
             ) : karega ? (
               <EmptyRow colSpan={komProfesor ? 7 : 6}>Karega dadus…</EmptyRow>
-            ) : pajina.fatia.length ? (
-              pajina.fatia.map((r) => {
+            ) : liñaFiltradu.length ? (
+              liñaFiltradu.map((r) => {
                 const p = r.prezensa;
                 const d = dataDate(r.data);
                 const sabadu = d.getDay() === 6;
@@ -249,12 +288,32 @@ function Prezensa({ ohin }: { ohin: Data }) {
               })
             ) : (
               <EmptyRow colSpan={komProfesor ? 7 : 6}>
-                La iha dadus ba períodu ne&apos;e
+                {status === "hotu"
+                  ? "La iha dadus ba períodu ne'e"
+                  : "La iha liña ho status ne'e iha períodu ne'e"}
               </EmptyRow>
             )}
           </tbody>
         </DataTable>
-        {erru || karega ? null : <Pagination pajina={pajina} naran="liña" />}
+        {/* The one thing paging gave that filtering does not: how much is
+            here. Without it a filtered grid cannot be told from a short one. */}
+        {erru || karega || !liñaFiltradu.length ? null : (
+          <div className="border-t border-border px-[14px] py-[10px] text-[12.5px] text-muted">
+            <b className="font-mono font-semibold text-text">
+              {liñaFiltradu.length}
+            </b>{" "}
+            liña
+            {status === "hotu" ? null : (
+              <>
+                {" "}
+                husi{" "}
+                <b className="font-mono font-semibold text-text">
+                  {linha.length}
+                </b>
+              </>
+            )}
+          </div>
+        )}
       </Panel>
 
       {detalle ? (
