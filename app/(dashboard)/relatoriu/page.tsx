@@ -23,7 +23,26 @@ import { useOhin } from "@/lib/ohin";
 import { usePajina } from "@/lib/pajina";
 import type { Filtru } from "@/lib/periodu";
 import { useRelatoriu, type Relatoriu } from "@/lib/relatoriu";
-import type { Data } from "@/lib/types";
+import { useProfesor } from "@/lib/store";
+import type { Data, User } from "@/lib/types";
+
+/**
+ * `hotu` returns a nested `profesor` with no discipline on it, so the printed
+ * header would have shown a dash for every teacher. The roster carries the
+ * field and is already in memory on this screen — Filters loads it for the
+ * teacher picker, and the store fetches once and is shared — so this joins the
+ * two rather than asking the API to widen 1500 rows for one line of a header.
+ */
+function komDisiplina(rel: Relatoriu, roster: User[]): Relatoriu {
+  const mapa = new Map(roster.map((p) => [p.id, p.disiplina_hanorin ?? ""]));
+  return {
+    ...rel,
+    liuro: rel.liuro.map((l) => ({
+      ...l,
+      profesor: { ...l.profesor, disiplina_hanorin: mapa.get(l.profesor.id) },
+    })),
+  };
+}
 
 export default function RelatoriuPage() {
   const ohin = useOhin();
@@ -40,6 +59,7 @@ export default function RelatoriuPage() {
 function RelatoriuView({ ohin }: { ohin: Data }) {
   const toast = useToast();
   const router = useRouter();
+  const { profesor } = useProfesor();
   const agora = dataDate(ohin);
 
   const [filtru, setFiltru] = useState<Filtru>({
@@ -73,6 +93,9 @@ function RelatoriuView({ ohin }: { ohin: Data }) {
       return;
     }
     setExport(tipu);
+    // Joined here rather than inside useRelatoriu: only the export prints a
+    // header, so the grid on screen has no use for the extra field.
+    rel = komDisiplina(rel, profesor);
     try {
       if (tipu === "pdf") {
         const { exportaPdf, naranFilePdf } = await import("@/lib/export-pdf");
