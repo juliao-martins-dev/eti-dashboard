@@ -34,7 +34,8 @@ export async function exportaPdf(rel: Relatoriu, naranFile: string): Promise<voi
     kabesalyu(doc, largura, logo, pajina, rel.periodu);
 
     autoTable(doc, {
-      startY: 46,
+      // Clears the three-line header block, whose last line sits at y=49.
+      startY: 52,
       margin: { left: 10, right: 10, bottom: 14 },
       theme: "grid",
       styles: {
@@ -147,11 +148,27 @@ function kabesalyu(
   });
 
   doc.setFontSize(9);
-  doc.text("Naran :", 11, 40);
-  doc.text("Kargu :", 11, 44.5);
-  doc.setFont("helvetica", "normal");
-  doc.text(pajina.profesor.naran_kompletu, 26, 40);
-  doc.text(pajina.profesor.kargu || "—", 26, 44.5);
+
+  /*
+   * Label, colon and value drawn as three columns rather than as one string,
+   * so the colons line up under each other. "Disciplina" is half as long
+   * again as "Naran", and a label glued to its own colon would have staggered
+   * the three values across the page.
+   */
+  const LINHA: [string, string][] = [
+    ["Naran", pajina.profesor.naran_kompletu],
+    ["Kargu", pajina.profesor.kargu || "—"],
+    ["Disciplina", pajina.profesor.disiplina_hanorin || "—"],
+  ];
+
+  LINHA.forEach(([rotulu, valor], i) => {
+    const y = 40 + i * 4.5;
+    doc.setFont("helvetica", "bold");
+    doc.text(rotulu, 11, y);
+    doc.text(":", 31, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(valor, 34, y);
+  });
 }
 
 function rodape(doc: import("jspdf").jsPDF) {
