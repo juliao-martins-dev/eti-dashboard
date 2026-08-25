@@ -100,15 +100,27 @@ export async function exportaExcel(rel: Relatoriu, ficheiru: string): Promise<vo
       });
     }
 
-    /* ── Naran / Kargu ────────────────────────────────────────────────── */
-    ws.getCell("A6").value = "Naran :";
-    ws.getCell("A7").value = "Kargu :";
-    ws.getCell("A6").font = { bold: true };
-    ws.getCell("A7").font = { bold: true };
-    ws.mergeCells("B6:E6");
-    ws.mergeCells("B7:E7");
-    ws.getCell("B6").value = pajina.profesor.naran_kompletu;
-    ws.getCell("B7").value = pajina.profesor.kargu || "—";
+    /* ── Naran / Kargu / Disciplina ────────────────────────────────────────────────── */
+    // Written by address rather than addRow, so the spacer and the grid below
+    // still append after whatever the last of these rows turns out to be.
+    const KABESALLU: [string, string, string][] = [
+      ["A6", "Naran :", pajina.profesor.naran_kompletu],
+      ["A7", "Kargu :", pajina.profesor.kargu || "—"],
+      ["A8", "Disciplina :", pajina.profesor.disiplina_hanorin || "—"],
+    ];
+
+    for (const [sela, rotulu, valor] of KABESALLU) {
+      const linha = sela.slice(1);
+      // Label across A:B, not A alone: column A is 7 wide because the grid
+      // below it holds "Data", and "Disciplina :" would have been clipped by
+      // the value sitting in the next cell.
+      ws.mergeCells(`A${linha}:B${linha}`);
+      ws.getCell(sela).value = rotulu;
+      ws.getCell(sela).font = { bold: true };
+      // C:F, because a discipline runs well past a single column.
+      ws.mergeCells(`C${linha}:F${linha}`);
+      ws.getCell(`C${linha}`).value = valor;
+    }
 
     ws.addRow([]);
 
