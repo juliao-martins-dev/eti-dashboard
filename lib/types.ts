@@ -97,6 +97,13 @@ export interface Profesor {
   naran_kompletu: string;
   kargu: string;
   foto: string | null;
+  /**
+   * Optional because `hotu` does not send it. Its nested `profesor` repeats on
+   * every one of the ~1500 rows a month for the whole school returns, so the
+   * report joins this from the roster rather than widening all of them for a
+   * value the printed header uses once per teacher.
+   */
+  disiplina_hanorin?: string;
 }
 
 /** `attendance.MarkaSerializer` — one punch and the evidence behind it. */
