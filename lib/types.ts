@@ -31,6 +31,15 @@ export type NivelEdukasaun =
  */
 export type Status = "PRESENT" | "ABSENT" | "LEAVE" | "MISSION" | "HOLIDAY";
 
+/**
+ * `attendance.Motivu` — why an administrator refused a day's evidence.
+ *
+ * Both are human judgements. There is no auto-rejection: an out-of-fence
+ * punch is already refused at check-in time whenever the geofence is
+ * enforced, and a poor indoor fix reports 50–100 m of `presizaun` on its own.
+ */
+export type MotivuRejeisaun = "FOTO_FALSU" | "DISTANSIA_DOOK";
+
 /** `attendance.Sesaun` — the two blocks of the school day. */
 export type Sesaun = "DADER" | "LOROKRAIK";
 
@@ -142,6 +151,23 @@ export interface Prezensa {
   status: Status;
   status_display: string;
   obs: string;
+
+  /*
+   * Rejeisaun. Carried on every day so the grid can badge a rejected one
+   * without a second request; empty on every day nobody has rejected.
+   *
+   * A rejected day has `status: "ABSENT"` — there is no separate FALTA value,
+   * because ABSENT is already what the report counter, the badge and both
+   * exports read as "Falta".
+   */
+  rejeisaun_motivu: MotivuRejeisaun | "";
+  /** The Tetun label, or null when the day is not rejected. */
+  rejeisaun_motivu_display: string | null;
+  /** The administrator's note. Separate from `obs`, the printed OBS column. */
+  rejeisaun_obs: string;
+  rejeita_husi_naran: string | null;
+  rejeita_iha: DataOras | null;
+
   marka: Marka[];
 }
 
