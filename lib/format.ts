@@ -1,4 +1,4 @@
-import type { Data, Kolumna, Marka, Oras, Prezensa } from "./types";
+import type { Data, DataOras, Kolumna, Marka, Oras, Prezensa } from "./types";
 
 /** `fulan_display` as eti-api spells it (`attendance.Fulan`), 1-indexed. */
 export const FULAN_NARAN = [
@@ -90,6 +90,19 @@ export const dataNaran = (data: Data): string => {
 export const dataKompletu = (data: Data): string => {
   const d = dataDate(data);
   return `${LORON_KURTU[d.getDay()]} · ${dataNaran(data)} ${d.getFullYear()}`;
+};
+
+/**
+ * "04 Agostu 2026, 09:26" — an audit timestamp.
+ *
+ * Parsed by the browser rather than by `dataDate`: this is a full ISO string
+ * with an offset, not the bare YYYY-MM-DD that one is built to keep free of
+ * timezone drift.
+ */
+export const dataOrasNaran = (quando: DataOras): string => {
+  const d = new Date(quando);
+  if (Number.isNaN(d.getTime())) return "—";
+  return `${pad(d.getDate())} ${FULAN_NARAN[d.getMonth() + 1]} ${d.getFullYear()}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
 /** `attendance.semana_husi` — which week of its own month a date falls in. */
