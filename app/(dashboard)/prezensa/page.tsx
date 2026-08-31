@@ -52,9 +52,19 @@ import type {
 } from "@/lib/types";
 
 /** The two reasons an administrator may refuse a day's evidence. */
-const MOTIVU_REJEISAUN: { value: MotivuRejeisaun; label: string }[] = [
+const MOTIVU_REJEISAUN: {
+  value: MotivuRejeisaun;
+  label: string;
+  sub?: string;
+}[] = [
   { value: "FOTO_FALSU", label: "Foto falsu" },
   { value: "DISTANSIA_DOOK", label: "Distánsia dook liu husi eskola" },
+  {
+    value: "HOTU_HOTU",
+    label: "Hotu-hotu",
+    // Spelled out because "Hotu-hotu" alone does not say what it covers.
+    sub: "Foto falsu no distánsia dook liu husi eskola",
+  },
 ];
 
 /** PRESENT is absent on purpose: only a punch can produce it. */
@@ -480,7 +490,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
       <Modal
         open={rejeita !== null}
         onClose={() => setRejeita(null)}
-        title="Motivu Rejeisaun"
+        title="Motivu Rejeita"
         subtitle={
           rejeita
             ? `${rejeita.profesor.naran_kompletu} · ${dataNaran(rejeita.data)}`
@@ -521,7 +531,14 @@ function Prezensa({ ohin }: { ohin: Data }) {
                   checked={motivu === m.value}
                   onChange={() => setMotivu(m.value)}
                 />
-                {m.label}
+                <span className="min-w-0">
+                  {m.label}
+                  {m.sub ? (
+                    <small className="mt-[1px] block text-[11.5px] font-normal text-muted">
+                      {m.sub}
+                    </small>
+                  ) : null}
+                </span>
               </label>
             ))}
           </div>
