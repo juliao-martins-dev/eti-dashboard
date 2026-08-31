@@ -150,10 +150,26 @@ export function useRelatoriu(f: Filtru): Rekursu<Relatoriu> {
   };
 }
 
+/**
+ * Whether an administrator refused this day's evidence.
+ *
+ * The punches are still on the record — the server never deletes them — but
+ * a refused day did not happen as far as the sheet is concerned, so the
+ * printed columns below treat it as empty.
+ */
+export const rejeitadu = (r: PrezensaProfesorLoron): boolean =>
+  !!r.prezensa?.rejeisaun_motivu;
+
+/** What the OBS column says on a day the administration refused. */
+export const OBS_REJEITADU = "Rejeita husi Administradór";
+
 /** The four grid columns as the paper sheet prints them, "—" when empty. */
 export function selaOras(
   r: PrezensaProfesorLoron,
 ): [string, string, string, string] {
+  // A rejected day prints no times. Leaving them would have the sheet assert
+  // an arrival the administration has formally refused.
+  if (rejeitadu(r)) return ["", "", "", ""];
   const p = r.prezensa;
   const sabadu = dataDate(r.data).getDay() === 6;
   const sela = (v: string | null, lorokraik: boolean): string => {
@@ -177,6 +193,9 @@ export function selaOras(
 export function selaAsinatura(
   r: PrezensaProfesorLoron,
 ): [string, string, string, string] {
+  // Blank for the same reason as the times: a tick here means "the evidence
+  // for this punch stands", which is exactly what a rejection withdraws.
+  if (rejeitadu(r)) return ["", "", "", ""];
   const p = r.prezensa;
   const m = MARKA_ASINATURA;
   return [
@@ -191,6 +210,14 @@ export function selaAsinatura(
 export function selaObs(r: PrezensaProfesorLoron): string {
   const p = r.prezensa;
   if (!p) return "";
+  // Ahead of the status check: a rejected day is ABSENT like a hand-written
+  // absence, and the sheet has to say which of the two this was.
+  if (rejeitadu(r)) {
+    const nota = p.rejeisaun_obs?.trim();
+    return nota
+      ? `${OBS_REJEITADU} — ${nota}`
+      : OBS_REJEITADU;
+  }
   if (p.status === "PRESENT") return p.obs ?? "";
   // `status_display`, not `status`: the exported sheet is a Tetun document,
   // and the stored value is English.
