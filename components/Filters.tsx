@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { Seg } from "@/components/ui/Seg";
 import { FULAN_NARAN } from "@/lib/format";
 import {
@@ -10,7 +10,7 @@ import {
   type Filtru,
   type Periodu,
 } from "@/lib/periodu";
-import { useProfesor } from "@/lib/store";
+import { etiketaRoster, useProfesor } from "@/lib/store";
 
 const PERIODU_NARAN: Record<Periodu, string> = {
   loron: "Loron",
@@ -37,6 +37,8 @@ export function Filters({
   children?: ReactNode;
 }) {
   const { profesor } = useProfesor();
+  // Disambiguates two accounts that share a name; a no-op for every other row.
+  const etiketa = useMemo(() => etiketaRoster(profesor), [profesor]);
   const set = (parte: Partial<Filtru>) => onChange({ ...value, ...parte });
   // Anchored on the filter's own year so the list never drops the year that
   // is currently selected.
@@ -54,7 +56,7 @@ export function Filters({
         <option value="hotu">Profesór hotu-hotu</option>
         {profesor.map((p) => (
           <option key={p.id} value={p.id}>
-            {p.naran_kompletu}
+            {etiketa(p)}
           </option>
         ))}
       </select>
