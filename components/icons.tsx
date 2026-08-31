@@ -215,6 +215,16 @@ export function IconMatanTaka({ className }: IconProps) {
   );
 }
 
+/** A crossed-out circle: refusing evidence, not deleting it. */
+export function IconRejeita({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M5.6 5.6l12.8 12.8" />
+    </svg>
+  );
+}
+
 export function IconTaka({ className }: IconProps) {
   return (
     <svg {...base} className={className} aria-hidden="true">
