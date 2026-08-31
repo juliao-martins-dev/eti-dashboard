@@ -63,6 +63,28 @@ export function karegaProfesor(forsa = false): Promise<void> {
   return pedidu;
 }
 
+/**
+ * A labeller that names each account unambiguously.
+ *
+ * Two teachers can share a name — nothing forbids it, and the school's own
+ * roster identifies people by NU. for exactly that reason. The number is
+ * appended only where a name actually repeats, so the ordinary case stays
+ * clean and the picker only gets busier when it has to.
+ *
+ * Returns a function rather than labelling in place, so the counting is done
+ * once for a list instead of once per row.
+ */
+export function etiketaRoster(roster: User[]): (p: User) => string {
+  const konta = new Map<string, number>();
+  for (const p of roster) {
+    konta.set(p.naran_kompletu, (konta.get(p.naran_kompletu) ?? 0) + 1);
+  }
+  return (p) =>
+    (konta.get(p.naran_kompletu) ?? 0) > 1
+      ? `${p.naran_kompletu} · ${p.numeru_id}`
+      : p.naran_kompletu;
+}
+
 export function useProfesor(): EstaduRoster {
   const estadu = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
