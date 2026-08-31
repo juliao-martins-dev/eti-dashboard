@@ -4,6 +4,8 @@ import { api, useApi, type Rekursu } from "./api";
 import { hotuQuery, type Filtru } from "./periodu";
 import type {
   Data,
+  MotivuRejeisaun,
+  Prezensa,
   StatusRejistu,
   StatusRejistuResposta,
   HotuResposta,
@@ -44,6 +46,43 @@ export function rejistuStatus(
     method: "POST",
     body: JSON.stringify(dadus),
   });
+}
+
+/**
+ * Refuse the evidence behind a day: it becomes ABSENT, shown as "Falta".
+ *
+ * Always an administrator's decision, never the server's. An out-of-fence
+ * punch is already refused at check-in time whenever the geofence is
+ * enforced, so a rule here would only fire where the school had turned that
+ * off; and a poor indoor GPS fix reports 50–100 m of its own accuracy, which
+ * would mark honest teachers absent with nobody in the loop.
+ *
+ * The punches are not deleted. They are the evidence the decision rests on,
+ * and the day keeps them so the judgement can be reviewed — or undone.
+ *
+ * Answers with the whole updated day, so the caller can refresh without a
+ * second request.
+ */
+export function rejeitaPrezensa(
+  id: number,
+  motivu: MotivuRejeisaun,
+  obs: string,
+): Promise<Prezensa> {
+  return api<Prezensa>(`/prezensa/${id}/rejeita/`, {
+    method: "POST",
+    body: JSON.stringify({ motivu, obs }),
+  });
+}
+
+/**
+ * Take a rejection back: the day returns to PRESENT and the audit trail is
+ * cleared.
+ *
+ * The server refuses this on a day it did not reject, so a leave-day ABSENT
+ * written through `/status/` cannot be turned into PRESENT through here.
+ */
+export function hasaiRejeisaun(id: number): Promise<Prezensa> {
+  return api<Prezensa>(`/prezensa/${id}/rejeita/`, { method: "DELETE" });
 }
 
 /** Return a hand-written day to "no record". 204, or `iha_marka` if it has punches. */
