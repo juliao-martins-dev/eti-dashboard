@@ -4,7 +4,7 @@ import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { DetalleModal } from "@/components/DetalleModal";
 import { Filters } from "@/components/Filters";
-import { IconLisensa } from "@/components/icons";
+import { IconLisensa, IconRejeita, IconTaka } from "@/components/icons";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import {
@@ -21,6 +21,7 @@ import { Empty, Panel } from "@/components/ui/Panel";
 import { PunchChip } from "@/components/ui/PunchChip";
 import { useToast } from "@/components/ui/Toast";
 import { ApiErru, mensajenErru } from "@/lib/api";
+import { cx } from "@/lib/cx";
 import {
   dataDate,
   dataNaran,
@@ -33,9 +34,28 @@ import {
 } from "@/lib/format";
 import { useOhin } from "@/lib/ohin";
 import type { Filtru, Periodu } from "@/lib/periodu";
-import { hasaiStatus, rejistuStatus, useHotu } from "@/lib/prezensa";
+import {
+  hasaiRejeisaun,
+  hasaiStatus,
+  rejeitaPrezensa,
+  rejistuStatus,
+  useHotu,
+} from "@/lib/prezensa";
 import { useProfesor } from "@/lib/store";
-import type { Data, Marka, PrezensaProfesorLoron, Status, StatusRejistu } from "@/lib/types";
+import type {
+  Data,
+  Marka,
+  MotivuRejeisaun,
+  PrezensaProfesorLoron,
+  Status,
+  StatusRejistu,
+} from "@/lib/types";
+
+/** The two reasons an administrator may refuse a day's evidence. */
+const MOTIVU_REJEISAUN: { value: MotivuRejeisaun; label: string }[] = [
+  { value: "FOTO_FALSU", label: "Foto falsu" },
+  { value: "DISTANSIA_DOOK", label: "Distánsia dook liu husi eskola" },
+];
 
 /** PRESENT is absent on purpose: only a punch can produce it. */
 const TIPU_LISENSA: { value: Status; label: string }[] = [
@@ -113,6 +133,10 @@ function Prezensa({ ohin }: { ohin: Data }) {
   const [lisensaAbertu, setLisensaAbertu] = useState(false);
   const [haruka, setHaruka] = useState(false);
   const [konflitu, setKonflitu] = useState<Data[] | null>(null);
+  /** The day being refused, while the reason is chosen. */
+  const [rejeita, setRejeita] = useState<PrezensaProfesorLoron | null>(null);
+  const [motivu, setMotivu] = useState<MotivuRejeisaun>("FOTO_FALSU");
+  const [motivuObs, setMotivuObs] = useState("");
   const [lisensa, setLisensa] = useState<StatusRejistu>({
     profesor: 0,
     status: "LEAVE",
@@ -174,6 +198,45 @@ function Prezensa({ ohin }: { ohin: Data }) {
       } else {
         toast(mensajenErru(e));
       }
+    } finally {
+      setHaruka(false);
+    }
+  }
+
+  function abreRejeita(r: PrezensaProfesorLoron) {
+    setMotivu("FOTO_FALSU");
+    setMotivuObs("");
+    setRejeita(r);
+  }
+
+  async function konfirmaRejeita() {
+    const alvu = rejeita?.prezensa;
+    if (!alvu) return;
+    setHaruka(true);
+    try {
+      await rejeitaPrezensa(alvu.id, motivu, motivuObs.trim());
+      setRejeita(null);
+      setDetalle(null);
+      refaz();
+      toast("Prezensa rejeita ona — loron ne'e sai Falta");
+    } catch (e) {
+      toast(mensajenErru(e));
+    } finally {
+      setHaruka(false);
+    }
+  }
+
+  async function hasaiRejeita(r: PrezensaProfesorLoron) {
+    if (!r.prezensa) return;
+    setHaruka(true);
+    try {
+      // The punches were never deleted, so the day simply returns to PRESENT.
+      await hasaiRejeisaun(r.prezensa.id);
+      setDetalle(null);
+      refaz();
+      toast("Rejeisaun hasai ona — loron fila ba prezente");
+    } catch (e) {
+      toast(mensajenErru(e));
     } finally {
       setHaruka(false);
     }
@@ -278,7 +341,22 @@ function Prezensa({ ohin }: { ohin: Data }) {
 
                     <Td>
                       {p?.status ? (
-                        <Badge status={p.status} />
+                        <>
+                          <Badge status={p.status} />
+                          {/* A rejected day is ABSENT like any other; the line
+                              underneath is what tells the two apart at a
+                              glance, and says who is answerable for it. */}
+                          {p.rejeisaun_motivu ? (
+                            <small className="mt-[3px] block text-[11px] leading-tight text-bad">
+                              {p.rejeisaun_motivu_display}
+                              {p.rejeita_husi_naran ? (
+                                <span className="block text-muted">
+                                  husi {p.rejeita_husi_naran}
+                                </span>
+                              ) : null}
+                            </small>
+                          ) : null}
+                        </>
                       ) : (
                         <span className="text-muted">—</span>
                       )}
@@ -323,37 +401,148 @@ function Prezensa({ ohin }: { ohin: Data }) {
           prezensa={detalle.prezensa}
           onClose={() => setDetalle(null)}
           asaun={
-            detalle.prezensa && detalle.prezensa.status !== "PRESENT" ? (
-              <>
+            <>
+              {/*
+                A day with punches can be refused; a day already refused can
+                have that taken back. Both are about evidence, so neither
+                appears on a day that has none.
+              */}
+              {detalle.prezensa?.status === "PRESENT" &&
+              detalle.prezensa.marka.length > 0 ? (
                 <Button
                   variant="ghost"
-                  className="mr-auto text-bad hover:border-bad hover:text-bad"
+                  tone="bad"
+                  className="mr-auto"
                   disabled={haruka}
-                  onClick={() => hasai(detalle)}
+                  onClick={() => abreRejeita(detalle)}
                 >
-                  Hasai rejistu
+                  <IconRejeita />
+                  Rejeita Prezensa
                 </Button>
+              ) : null}
+
+              {detalle.prezensa?.rejeisaun_motivu ? (
                 <Button
                   variant="ghost"
-                  onClick={() => {
-                    const p = detalle.prezensa!;
-                    setDetalle(null);
-                    abreLisensa({
-                      profesor: detalle.profesor.id,
-                      status: p.status,
-                      husi: detalle.data,
-                      too: detalle.data,
-                      obs: p.obs,
-                    });
-                  }}
+                  tone="ok"
+                  className="mr-auto"
+                  disabled={haruka}
+                  onClick={() => hasaiRejeita(detalle)}
                 >
-                  Edita
+                  Hasai rejeisaun
                 </Button>
-              </>
-            ) : null
+              ) : null}
+
+              {/*
+                The hand-written path. A rejected day is ABSENT too, but it is
+                not a hand-written one -- removing it would try to delete a day
+                holding punches, which the server refuses anyway.
+              */}
+              {detalle.prezensa &&
+              detalle.prezensa.status !== "PRESENT" &&
+              !detalle.prezensa.rejeisaun_motivu ? (
+                <>
+                  <Button
+                    variant="ghost"
+                    className="mr-auto text-bad hover:border-bad hover:text-bad"
+                    disabled={haruka}
+                    onClick={() => hasai(detalle)}
+                  >
+                    Hasai rejistu
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      const p = detalle.prezensa!;
+                      setDetalle(null);
+                      abreLisensa({
+                        profesor: detalle.profesor.id,
+                        status: p.status,
+                        husi: detalle.data,
+                        too: detalle.data,
+                        obs: p.obs,
+                      });
+                    }}
+                  >
+                    Edita
+                  </Button>
+                </>
+              ) : null}
+            </>
           }
         />
       ) : null}
+
+      {/*
+        Stacked on the detail modal, so it takes over the outside-click and
+        Escape: one stray click must not throw away a half-typed reason.
+      */}
+      <Modal
+        open={rejeita !== null}
+        onClose={() => setRejeita(null)}
+        title="Motivu Rejeisaun"
+        subtitle={
+          rejeita
+            ? `${rejeita.profesor.naran_kompletu} · ${dataNaran(rejeita.data)}`
+            : undefined
+        }
+        foraLiur={false}
+        larguraMax="460px"
+        footer={
+          <>
+            <Button variant="ghost" disabled={haruka} onClick={() => setRejeita(null)}>
+              <IconTaka />
+              Kansela
+            </Button>
+            <Button tone="bad" disabled={haruka} onClick={konfirmaRejeita}>
+              <IconRejeita />
+              {haruka ? "Rejeita…" : "Konfirma"}
+            </Button>
+          </>
+        }
+      >
+        <Field label="Motivu">
+          {/* Radios, not a select: there are two, and both need reading. */}
+          <div className="flex flex-col gap-[2px]">
+            {MOTIVU_REJEISAUN.map((m) => (
+              <label
+                key={m.value}
+                className={cx(
+                  "flex cursor-pointer items-center gap-[9px] rounded-[8px] border px-[11px] py-[9px] text-[13px]",
+                  motivu === m.value
+                    ? "border-bad bg-[color-mix(in_srgb,var(--color-bad)_8%,transparent)] font-semibold text-bad"
+                    : "border-border hover:bg-bg",
+                )}
+              >
+                <input
+                  type="radio"
+                  name="motivu"
+                  className="h-[15px] w-[15px] shrink-0 accent-[var(--color-bad)]"
+                  checked={motivu === m.value}
+                  onChange={() => setMotivu(m.value)}
+                />
+                {m.label}
+              </label>
+            ))}
+          </div>
+        </Field>
+
+        <Field label="Observasaun" htmlFor="rObs">
+          <textarea
+            id="rObs"
+            rows={3}
+            value={motivuObs}
+            onChange={(e) => setMotivuObs(e.target.value)}
+            placeholder="ez. Foto la hanesan profesór ne'e"
+          />
+        </Field>
+
+        <Hint>
+          Loron ne&apos;e sei sai <b>Falta</b>. Marka sira ho sira-nia foto no
+          GPS sei nafatin iha— sira mak evidénsia ba desizaun ne&apos;e, no bele
+          hasai rejeisaun karik sala.
+        </Hint>
+      </Modal>
 
       <Modal
         open={lisensaAbertu}
