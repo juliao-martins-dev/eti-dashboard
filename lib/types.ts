@@ -38,7 +38,11 @@ export type Status = "PRESENT" | "ABSENT" | "LEAVE" | "MISSION" | "HOLIDAY";
  * punch is already refused at check-in time whenever the geofence is
  * enforced, and a poor indoor fix reports 50–100 m of `presizaun` on its own.
  */
-export type MotivuRejeisaun = "FOTO_FALSU" | "DISTANSIA_DOOK";
+export type MotivuRejeisaun =
+  | "FOTO_FALSU"
+  | "DISTANSIA_DOOK"
+  /** Both at once — a photo that is not the teacher, taken away from school. */
+  | "HOTU_HOTU";
 
 /** `attendance.Sesaun` — the two blocks of the school day. */
 export type Sesaun = "DADER" | "LOROKRAIK";
