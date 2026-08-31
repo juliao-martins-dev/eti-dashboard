@@ -41,7 +41,7 @@ import {
   rejistuStatus,
   useHotu,
 } from "@/lib/prezensa";
-import { useProfesor } from "@/lib/store";
+import { etiketaRoster, useProfesor } from "@/lib/store";
 import type {
   Data,
   Marka,
@@ -162,6 +162,10 @@ function Prezensa({ ohin }: { ohin: Data }) {
   const komProfesor = filtru.who === "hotu";
 
   const [status, setStatus] = useState<StatusFiltru>("hotu");
+
+  // Same labeller as the toolbar, so a teacher is named identically wherever
+  // the screen offers a choice between accounts.
+  const etiketa = useMemo(() => etiketaRoster(profesor), [profesor]);
 
   // Narrowing rather than paging: a month for the whole school is ~1500 rows,
   // and the reason to open it is almost always one kind of day. Filtering
@@ -591,7 +595,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
           >
             {profesor.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.naran_kompletu}
+                {etiketa(p)}
               </option>
             ))}
           </select>
