@@ -4,7 +4,7 @@ import { api, useApi, type Rekursu } from "./api";
 import { hotuQuery, type Filtru } from "./periodu";
 import type {
   Data,
-  MotivuRejeisaun,
+  MotivuRejeita,
   Prezensa,
   StatusRejistu,
   StatusRejistuResposta,
@@ -65,7 +65,7 @@ export function rejistuStatus(
  */
 export function rejeitaPrezensa(
   id: number,
-  motivu: MotivuRejeisaun,
+  motivu: MotivuRejeita,
   obs: string,
 ): Promise<Prezensa> {
   return api<Prezensa>(`/prezensa/${id}/rejeita/`, {
@@ -81,7 +81,7 @@ export function rejeitaPrezensa(
  * The server refuses this on a day it did not reject, so a leave-day ABSENT
  * written through `/status/` cannot be turned into PRESENT through here.
  */
-export function hasaiRejeisaun(id: number): Promise<Prezensa> {
+export function hasaiRejeita(id: number): Promise<Prezensa> {
   return api<Prezensa>(`/prezensa/${id}/rejeita/`, { method: "DELETE" });
 }
 
