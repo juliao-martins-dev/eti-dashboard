@@ -35,7 +35,9 @@ import {
 import { useOhin } from "@/lib/ohin";
 import type { Filtru, Periodu } from "@/lib/periodu";
 import {
-  hasaiRejeisaun,
+  // Aliased: the page's own click handler below is called hasaiRejeita too,
+  // and inside its scope the local name would shadow this import.
+  hasaiRejeita as hasaiRejeitaApi,
   hasaiStatus,
   rejeitaPrezensa,
   rejistuStatus,
@@ -45,15 +47,15 @@ import { etiketaRoster, useProfesor } from "@/lib/store";
 import type {
   Data,
   Marka,
-  MotivuRejeisaun,
+  MotivuRejeita,
   PrezensaProfesorLoron,
   Status,
   StatusRejistu,
 } from "@/lib/types";
 
 /** The two reasons an administrator may refuse a day's evidence. */
-const MOTIVU_REJEISAUN: {
-  value: MotivuRejeisaun;
+const MOTIVU_REJEITA: {
+  value: MotivuRejeita;
   label: string;
   sub?: string;
 }[] = [
@@ -145,7 +147,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
   const [konflitu, setKonflitu] = useState<Data[] | null>(null);
   /** The day being refused, while the reason is chosen. */
   const [rejeita, setRejeita] = useState<PrezensaProfesorLoron | null>(null);
-  const [motivu, setMotivu] = useState<MotivuRejeisaun>("FOTO_FALSU");
+  const [motivu, setMotivu] = useState<MotivuRejeita>("FOTO_FALSU");
   const [motivuObs, setMotivuObs] = useState("");
   const [lisensa, setLisensa] = useState<StatusRejistu>({
     profesor: 0,
@@ -245,10 +247,10 @@ function Prezensa({ ohin }: { ohin: Data }) {
     setHaruka(true);
     try {
       // The punches were never deleted, so the day simply returns to PRESENT.
-      await hasaiRejeisaun(r.prezensa.id);
+      await hasaiRejeitaApi(r.prezensa.id);
       setDetalle(null);
       refaz();
-      toast("Rejeisaun hasai ona — loron fila ba prezente");
+      toast("Rejeita hasai ona — loron fila ba prezente");
     } catch (e) {
       toast(mensajenErru(e));
     } finally {
@@ -443,7 +445,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
                   disabled={haruka}
                   onClick={() => hasaiRejeita(detalle)}
                 >
-                  Hasai rejeisaun
+                  Hasai rejeita
                 </Button>
               ) : null}
 
@@ -462,7 +464,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
                     disabled={haruka}
                     onClick={() => hasai(detalle)}
                   >
-                    Hasai rejistu
+                    Hasai rejeita
                   </Button>
                   <Button
                     variant="ghost"
@@ -518,7 +520,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
         <Field label="Motivu">
           {/* Radios, not a select: there are two, and both need reading. */}
           <div className="flex flex-col gap-[2px]">
-            {MOTIVU_REJEISAUN.map((m) => (
+            {MOTIVU_REJEITA.map((m) => (
               <label
                 key={m.value}
                 className={cx(
@@ -561,7 +563,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
         <Hint>
           Loron ne&apos;e sei sai <b>Falta</b>. Marka sira ho sira-nia foto no
           GPS sei nafatin iha— sira mak evidénsia ba desizaun ne&apos;e, no bele
-          hasai rejeisaun karik sala.
+          hasai rejeita karik sala.
         </Hint>
       </Modal>
 
