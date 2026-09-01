@@ -164,11 +164,11 @@ export interface Prezensa {
    * because ABSENT is already what the report counter, the badge and both
    * exports read as "Falta".
    */
-  rejeisaun_motivu: MotivuRejeisaun | "";
+  rejeita_motivu: MotivuRejeisaun | "";
   /** The Tetun label, or null when the day is not rejected. */
-  rejeisaun_motivu_display: string | null;
+  rejeita_motivu_display: string | null;
   /** The administrator's note. Separate from `obs`, the printed OBS column. */
-  rejeisaun_obs: string;
+  rejeita_obs: string;
   rejeita_husi_naran: string | null;
   rejeita_iha: DataOras | null;
 
