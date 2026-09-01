@@ -158,7 +158,7 @@ export function useRelatoriu(f: Filtru): Rekursu<Relatoriu> {
  * printed columns below treat it as empty.
  */
 export const rejeitadu = (r: PrezensaProfesorLoron): boolean =>
-  !!r.prezensa?.rejeisaun_motivu;
+  !!r.prezensa?.rejeita_motivu;
 
 /** What the OBS column says on a day the administration refused. */
 export const OBS_REJEITADU = "Rejeita husi Administradór";
@@ -213,7 +213,7 @@ export function selaObs(r: PrezensaProfesorLoron): string {
   // Ahead of the status check: a rejected day is ABSENT like a hand-written
   // absence, and the sheet has to say which of the two this was.
   if (rejeitadu(r)) {
-    const nota = p.rejeisaun_obs?.trim();
+    const nota = p.rejeita_obs?.trim();
     return nota
       ? `${OBS_REJEITADU} — ${nota}`
       : OBS_REJEITADU;
