@@ -100,7 +100,7 @@ needs to see the evidence it was made from.
 
 ### 5. Undoing it
 
-**Hasai rejeisaun** calls `DELETE /prezensa/{id}/rejeita/`. The day returns to
+**Hasai rejeita** calls `DELETE /prezensa/{id}/rejeita/`. The day returns to
 `PRESENT` and all five fields clear.
 
 The button is shown only when `detalle.prezensa?.rejeita_motivu` is truthy —
@@ -148,7 +148,7 @@ They are on **every** day object, not only rejected ones.
 |---|---|---|
 | `la_iha_marka` | 400 | The day has no punches, so there is nothing to refuse. A day nobody marked is made absent through **Rejistu Lisensa** instead. Hide **Rejeita Prezensa** on an unmarked day |
 | `marka_seluk` | 400 | The `marka` id belongs to another day. The dashboard does not send `marka`, so this should not occur |
-| `la_rejeita` | 400 | `DELETE` on a day that was never rejected — keep **Hasai rejeisaun** hidden unless `rejeita_motivu` is set |
+| `la_rejeita` | 400 | `DELETE` on a day that was never rejected — keep **Hasai rejeita** hidden unless `rejeita_motivu` is set |
 | — | 403 | Not an admin |
 | — | 404 | No day with that id |
 
