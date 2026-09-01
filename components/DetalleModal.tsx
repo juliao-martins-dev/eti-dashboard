@@ -46,7 +46,7 @@ export function DetalleModal({
   const d = dataDate(data);
   const sabadu = d.getDay() === 6;
   const status = prezensa?.status ?? null;
-  const rejeitadu = !!prezensa?.rejeisaun_motivu;
+  const rejeitadu = !!prezensa?.rejeita_motivu;
   // A rejected day is ABSENT, but it still holds the punches the decision was
   // made from -- and those are precisely what an administrator reviewing the
   // judgement needs to see, so it keeps the cards rather than the OBS note.
@@ -88,10 +88,10 @@ export function DetalleModal({
       {rejeitadu ? (
         <div className="rounded-[10px] border border-[color-mix(in_srgb,var(--color-bad)_35%,transparent)] bg-[color-mix(in_srgb,var(--color-bad)_9%,transparent)] px-[13px] py-[11px] text-[12.5px] leading-relaxed text-bad">
           <b className="block text-[13px]">
-            Prezensa rejeita — {prezensa?.rejeisaun_motivu_display}
+            Prezensa rejeita — {prezensa?.rejeita_motivu_display}
           </b>
-          {prezensa?.rejeisaun_obs ? (
-            <span className="mt-[3px] block">{prezensa.rejeisaun_obs}</span>
+          {prezensa?.rejeita_obs ? (
+            <span className="mt-[3px] block">{prezensa.rejeita_obs}</span>
           ) : null}
           <span className="mt-[5px] block opacity-80">
             Husi {prezensa?.rejeita_husi_naran ?? "—"}
