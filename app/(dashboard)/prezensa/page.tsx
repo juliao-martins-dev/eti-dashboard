@@ -360,9 +360,9 @@ function Prezensa({ ohin }: { ohin: Data }) {
                           {/* A rejected day is ABSENT like any other; the line
                               underneath is what tells the two apart at a
                               glance, and says who is answerable for it. */}
-                          {p.rejeisaun_motivu ? (
+                          {p.rejeita_motivu ? (
                             <small className="mt-[3px] block text-[11px] leading-tight text-bad">
-                              {p.rejeisaun_motivu_display}
+                              {p.rejeita_motivu_display}
                               {p.rejeita_husi_naran ? (
                                 <span className="block text-muted">
                                   husi {p.rejeita_husi_naran}
@@ -435,7 +435,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
                 </Button>
               ) : null}
 
-              {detalle.prezensa?.rejeisaun_motivu ? (
+              {detalle.prezensa?.rejeita_motivu ? (
                 <Button
                   variant="ghost"
                   tone="ok"
@@ -454,7 +454,7 @@ function Prezensa({ ohin }: { ohin: Data }) {
               */}
               {detalle.prezensa &&
               detalle.prezensa.status !== "PRESENT" &&
-              !detalle.prezensa.rejeisaun_motivu ? (
+              !detalle.prezensa.rejeita_motivu ? (
                 <>
                   <Button
                     variant="ghost"
