@@ -38,7 +38,7 @@ export type Status = "PRESENT" | "ABSENT" | "LEAVE" | "MISSION" | "HOLIDAY";
  * punch is already refused at check-in time whenever the geofence is
  * enforced, and a poor indoor fix reports 50–100 m of `presizaun` on its own.
  */
-export type MotivuRejeisaun =
+export type MotivuRejeita =
   | "FOTO_FALSU"
   | "DISTANSIA_DOOK"
   /** Both at once — a photo that is not the teacher, taken away from school. */
@@ -157,14 +157,14 @@ export interface Prezensa {
   obs: string;
 
   /*
-   * Rejeisaun. Carried on every day so the grid can badge a rejected one
+   * Rejeita. Carried on every day so the grid can badge a rejected one
    * without a second request; empty on every day nobody has rejected.
    *
    * A rejected day has `status: "ABSENT"` — there is no separate FALTA value,
    * because ABSENT is already what the report counter, the badge and both
    * exports read as "Falta".
    */
-  rejeita_motivu: MotivuRejeisaun | "";
+  rejeita_motivu: MotivuRejeita | "";
   /** The Tetun label, or null when the day is not rejected. */
   rejeita_motivu_display: string | null;
   /** The administrator's note. Separate from `obs`, the printed OBS column. */
